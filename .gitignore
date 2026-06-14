@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# After Effects / Adobe
+*.aep
+*.aep.lock
+Adobe After Effects Auto-Save/
+*.aepx
+
+# Editor / OS cruft
+*~
+*.swp
+*.tmp
+Thumbs.db
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
