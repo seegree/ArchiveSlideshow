@@ -229,8 +229,9 @@
         );
         cycleButton.alignment = ["fill", "top"];
         cycleButton.helpTip =
-            "Open or select a generated slide comp, then click to rebuild it " +
-            "with the next layout. Click again to keep cycling.";
+            "Select a slide — open its comp, click its layer in the master " +
+            "timeline, or select it in the Project panel — then click to " +
+            "rebuild it with the next layout. Click again to keep cycling.";
 
         var status = panel.add(
             "statictext",
@@ -431,15 +432,17 @@
     }
 
     function cycleActiveSlide() {
-        var comp = activeSlideComp();
-        if (comp === null) {
+        var target = activeSlideComp();
+        if (target === null) {
             alert(
-                "Open or select a generated slide comp first (one whose " +
-                "comment starts with \"" + SLIDE_TAG + "\").",
+                "Select a slide first: open its comp, click its layer in the " +
+                "master timeline, or select it in the Project panel. Then " +
+                "click Cycle.",
                 SCRIPT_NAME
             );
             return;
         }
+        var comp = target.comp;
         var record = parseSlideComment(comp.comment);
         if (record === null || record.kind === "section") {
             alert(
@@ -471,10 +474,21 @@
         app.beginUndoGroup("Cycle Slide Layout");
         try {
             reRollSlide(comp, record, nextTreatment, images, config);
+            if (target.layer !== null) {
+                // Keep the master-timeline layer in step with the rebuilt comp.
+                try {
+                    target.layer.name = comp.name;
+                    target.layer.label = comp.label;
+                } catch (layerError) {
+                    // The comp itself is correct even if the layer rejects it.
+                }
+            }
             setStatus(
                 "Cycled \"" + comp.name + "\" to " + nextTreatment + "."
             );
-            comp.openInViewer();
+            if (target.reveal) {
+                comp.openInViewer();
+            }
         } catch (error) {
             alert(
                 "Could not change the layout:\n" + error.message,
@@ -486,14 +500,32 @@
     }
 
     function activeSlideComp() {
+        // 1. The slide comp itself is open and active.
         if (isSlideComp(app.project.activeItem)) {
-            return app.project.activeItem;
+            return { comp: app.project.activeItem, reveal: true, layer: null };
         }
+        // 2. A slide is selected as a layer in the active comp, e.g. clicking
+        //    its layer in the master timeline. Cycle it but stay on the master.
+        var active = app.project.activeItem;
+        if (active instanceof CompItem) {
+            var layers = active.selectedLayers;
+            var i;
+            for (i = 0; i < layers.length; i += 1) {
+                if (isSlideComp(layers[i].source)) {
+                    return {
+                        comp: layers[i].source,
+                        reveal: false,
+                        layer: layers[i]
+                    };
+                }
+            }
+        }
+        // 3. A slide comp is selected in the Project panel.
         var selection = app.project.selection;
-        var i;
-        for (i = 0; i < selection.length; i += 1) {
-            if (isSlideComp(selection[i])) {
-                return selection[i];
+        var j;
+        for (j = 0; j < selection.length; j += 1) {
+            if (isSlideComp(selection[j])) {
+                return { comp: selection[j], reveal: true, layer: null };
             }
         }
         return null;

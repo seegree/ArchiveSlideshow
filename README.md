@@ -152,12 +152,18 @@ Each slide comp records the move it was built with in two places:
 
 ## Cycling a slide's layout
 
-To re-roll a single slide without rebuilding the whole slideshow, open or
-select its slide comp and click **Cycle Active Slide's Layout**. Each click
-rebuilds that comp in place with the next layout in the list — single-photo
-slides step through the single treatments, two-up slides step through the pair
-styles — so you can cycle until it looks right. The master timeline updates
-automatically because it only references the slide.
+To re-roll a single slide without rebuilding the whole slideshow, target it in
+any of three ways, then click **Cycle Active Slide's Layout**:
+
+- open the slide comp, or
+- click the slide's layer in the master timeline, or
+- select the slide comp in the Project panel.
+
+Each click rebuilds that slide in place with the next layout in the list —
+single-photo slides step through the single treatments, two-up slides step
+through the pair styles — so you can cycle until it looks right. Cycling from
+the master timeline keeps the master in view and renames its layer to match, so
+you can keep working in context.
 
 Cycling keeps the slide's size, duration, and the movement it was built with,
 and reads the current panel's color treatment and max enlargement. It rebuilds
