@@ -52,8 +52,9 @@ Other treatments can be forced across the slideshow:
 
 - **Full Bleed** fills the canvas, including when that requires enlargement.
 - **Near Full** fits the image inside a narrow transparent perimeter.
-- **Soft Background** protects the original image while a blurred duplicate
-  fills the frame.
+- **Soft Background** protects the original image while a heavily blurred
+  duplicate fills the frame, tinted by a deep blue color wash so the
+  background reads as a deliberate color field that sets off the photo.
 - **Window Frame** places a moving, overscanned image inside a fixed light
   frame. The opening clips the image as it pans or pushes.
 - **Print** keeps the full image and matte together as a subtly rotated

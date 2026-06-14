@@ -8,6 +8,9 @@
     // A photo displayed beyond this percent of its original size gets a
     // "CHECK ENLARGEMENT" name, comment, and warning label for review.
     var ENLARGEMENT_WARNING_SCALE = 133;
+    // Deep blue used by the Soft Background treatment, as both the base field
+    // and the color wash that tints the blurred echo behind the photo.
+    var SOFT_BG_WASH_COLOR = [0.04, 0.06, 0.16];
     var IMAGE_EXTENSIONS = {
         "jpg": true,
         "jpeg": true,
@@ -1273,7 +1276,7 @@
     }
 
     function addSoftBackground(comp, item, config) {
-        addBackground(comp, [0.035, 0.035, 0.04], "Background");
+        addBackground(comp, SOFT_BG_WASH_COLOR, "Background");
         var layer = comp.layers.add(item);
         layer.name = "SOFT BACKGROUND";
         applyArchiveLook(layer, config.look);
@@ -1285,15 +1288,29 @@
             null
         );
         layer.property("ADBE Transform Group")
-            .property("ADBE Opacity").setValue(42);
+            .property("ADBE Opacity").setValue(50);
         try {
             var blur = layer.property("ADBE Effect Parade")
                 .addProperty("ADBE Gaussian Blur 2");
-            blur.property("ADBE Gaussian Blur 2-0001").setValue(55);
+            blur.property("ADBE Gaussian Blur 2-0001").setValue(120);
             blur.property("ADBE Gaussian Blur 2-0003").setValue(true);
         } catch (error) {
             // The layout remains useful if the localized AE build lacks this effect.
         }
+
+        // A deep blue wash sits over the blurred echo (and under the sharp
+        // foreground photo added next) so the background reads as a deliberate
+        // color field instead of a plain blurred duplicate.
+        var wash = comp.layers.addSolid(
+            SOFT_BG_WASH_COLOR,
+            "COLOR WASH",
+            comp.width,
+            comp.height,
+            1,
+            comp.duration
+        );
+        wash.property("ADBE Transform Group")
+            .property("ADBE Opacity").setValue(45);
     }
 
     function createTwoUpSlide(comp, images, slideIndex, config) {
