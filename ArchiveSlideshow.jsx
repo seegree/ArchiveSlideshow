@@ -14,6 +14,9 @@
     // Warm off-white hairline drawn down the seam of Edge to Edge pairs so the
     // split reads as a deliberate diptych rather than one broken image.
     var EDGE_RULE_COLOR = [0.94, 0.93, 0.90];
+    // Refined warm charcoal placed under every slide when the background
+    // option is on, so inset layouts sit on a ground instead of pure black.
+    var MASTER_BG_COLOR = [0.07, 0.067, 0.063];
     var IMAGE_EXTENSIONS = {
         "jpg": true,
         "jpeg": true,
@@ -98,6 +101,17 @@
             "s",
             "How long each photo stays on screen before the next begins."
         );
+        var backgroundCheck = canvasPanel.add(
+            "checkbox",
+            undefined,
+            "Add background behind everything"
+        );
+        backgroundCheck.value = true;
+        backgroundCheck.alignment = ["left", "center"];
+        backgroundCheck.helpTip =
+            "Place a designed dark background under every slide so inset " +
+            "layouts sit on a ground instead of black. Recolor or replace " +
+            "the MASTER BACKGROUND layer afterward.";
 
         var stylePanel = addPanel(panel, "Style");
         var treatmentRow = addDropdownRow(
@@ -120,9 +134,10 @@
             stylePanel,
             "Movement",
             ["Still", "Gentle Push", "Gentle Drift", "Push + Drift", "Cycle"],
-            4,
-            "How photos move during a slide. Cycle rotates through the " +
-                "moving styles."
+            1,
+            "How photos move during a slide. Gentle Push is the calm " +
+                "default; Cycle rotates through the moving styles, favoring " +
+                "push."
         );
         var lookRow = addDropdownRow(
             stylePanel,
@@ -237,6 +252,7 @@
             height: heightRow.input,
             frameRate: frameRateRow.input,
             seconds: secondsRow.input,
+            background: backgroundCheck,
             pairTiming: pairTimingRow.input,
             treatment: treatmentRow.input,
             maxUpscale: upscaleRow.input,
@@ -468,6 +484,7 @@
             height: Math.round(height),
             frameRate: frameRate,
             seconds: seconds,
+            background: ui.background.value,
             sectionCards: selectedText(ui.sectionCards),
             pairTiming: selectedText(ui.pairTiming),
             treatment: selectedText(ui.treatment),
@@ -662,6 +679,9 @@
             MASTER_TAG + "\nVersion " + VERSION +
             "\nSource: " + sourceFolder.fsName;
         assembleMaster(master, slideItems, schedule, config);
+        if (config.background) {
+            addMasterBackground(master);
+        }
 
         return {
             comp: master,
@@ -1195,14 +1215,17 @@
             [config.width * 0.94, config.height * 0.92]
         );
 
+        // Strong-rotation pool for Auto Mix. Contained is intentionally left
+        // out of automatic selection (it stays available as a manual choice);
+        // Near Full is used sparingly below rather than as a default.
+        var protectedTreatments = [
+            "Soft Background",
+            "Window Frame",
+            "Print"
+        ];
+
         if (isPortraitImage(item)) {
-            var portraitTreatments = [
-                "Window Frame",
-                "Print",
-                "Soft Background",
-                "Contained"
-            ];
-            return portraitTreatments[slideIndex % portraitTreatments.length];
+            return protectedTreatments[slideIndex % protectedTreatments.length];
         }
 
         if (isLandscapeImage(item)) {
@@ -1221,9 +1244,13 @@
             ) {
                 return "Full Bleed";
             }
-            if (nearScale <= config.maxUpscale * 1.15) {
+            if (
+                nearScale <= config.maxUpscale * 1.15 &&
+                slideIndex % 4 === 3
+            ) {
                 return "Near Full";
             }
+            return protectedTreatments[slideIndex % protectedTreatments.length];
         }
 
         if (
@@ -1235,17 +1262,10 @@
         }
         if (
             nearScale <= config.maxUpscale * 1.15 &&
-            slideIndex % 3 !== 2
+            slideIndex % 4 === 3
         ) {
             return "Near Full";
         }
-
-        var protectedTreatments = [
-            "Window Frame",
-            "Soft Background",
-            "Print",
-            "Contained"
-        ];
         return protectedTreatments[slideIndex % protectedTreatments.length];
     }
 
@@ -1267,12 +1287,16 @@
         if (config.multiStyle !== "Auto Mix") {
             return config.multiStyle;
         }
+        // Strong pair styles dominate the rotation; Clean appears only once
+        // per cycle as an occasional plainer beat.
         var styles = [
             "Hero + Support",
             "Offset Pair",
-            "Window Frame",
             "Prints",
             "Edge to Edge",
+            "Window Frame",
+            "Hero + Support",
+            "Offset Pair",
             "Clean"
         ];
         return styles[slideIndex % styles.length];
@@ -1649,6 +1673,72 @@
         return layer;
     }
 
+    function addMasterBackground(master) {
+        // Vignette goes in first and is pushed to the bottom so it sits just
+        // above the base color and below every slide. The base color is moved
+        // to the end last so it is the very bottom layer of the comp.
+        try {
+            var vignette = master.layers.addSolid(
+                [0, 0, 0],
+                "MASTER VIGNETTE",
+                master.width,
+                master.height,
+                1,
+                master.duration
+            );
+            var mask = vignette.property("ADBE Mask Parade")
+                .addProperty("ADBE Mask Atom");
+            var cx = master.width / 2;
+            var cy = master.height / 2;
+            var rx = master.width * 0.62;
+            var ry = master.height * 0.62;
+            var kx = rx * 0.5523;
+            var ky = ry * 0.5523;
+            var shape = new Shape();
+            shape.closed = true;
+            shape.vertices = [
+                [cx, cy - ry],
+                [cx + rx, cy],
+                [cx, cy + ry],
+                [cx - rx, cy]
+            ];
+            shape.inTangents = [
+                [-kx, 0],
+                [0, -ky],
+                [kx, 0],
+                [0, ky]
+            ];
+            shape.outTangents = [
+                [kx, 0],
+                [0, ky],
+                [-kx, 0],
+                [0, -ky]
+            ];
+            mask.property("ADBE Mask Shape").setValue(shape);
+            mask.maskMode = MaskMode.SUBTRACT;
+            var feather = Math.round(
+                Math.min(master.width, master.height) * 0.25
+            );
+            mask.property("ADBE Mask Feather").setValue([feather, feather]);
+            mask.property("ADBE Mask Opacity").setValue(45);
+            vignette.moveToEnd();
+        } catch (error) {
+            // The vignette is a refinement; the flat base color below still
+            // applies if masks behave differently in this AE build.
+        }
+
+        var background = master.layers.addSolid(
+            MASTER_BG_COLOR,
+            "MASTER BACKGROUND",
+            master.width,
+            master.height,
+            1,
+            master.duration
+        );
+        background.moveToEnd();
+        return background;
+    }
+
     function createMotionController(comp, name, position) {
         var controller = comp.layers.addNull();
         controller.name = name;
@@ -1708,7 +1798,15 @@
         if (config.motion !== "Cycle") {
             return config.motion;
         }
-        var recipes = ["Gentle Push", "Gentle Drift", "Push + Drift"];
+        // Push-weighted rotation: push appears in four of five slots so the
+        // motion reads calm and intentional rather than constantly drifting.
+        var recipes = [
+            "Gentle Push",
+            "Push + Drift",
+            "Gentle Push",
+            "Gentle Drift",
+            "Push + Drift"
+        ];
         return recipes[index % recipes.length];
     }
 
@@ -1762,7 +1860,8 @@
     }
 
     function motionDistance(width) {
-        return Math.max(8, Math.min(28, width * 0.02));
+        // Drift travel, trimmed ~20% from the original for a subtler move.
+        return Math.max(6, Math.min(22, width * 0.016));
     }
 
     function addCoverMotionOverscan(layer, recipe, width) {

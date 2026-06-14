@@ -40,13 +40,15 @@ their intended sequence. Each folder can also generate a section card.
 
 **Auto Mix** evaluates effective resolution and aspect-ratio mismatch, then
 varies the treatment across the sequence. Eligible images become full-bleed
-or near-full hero slides. Weaker images rotate among protected window-frame,
-soft-background, print, and contained treatments.
+hero slides. Other images rotate among the stronger protected treatments —
+soft-background, window-frame, and print. Near Full is used only sparingly,
+and Contained is left out of the automatic rotation entirely (it remains
+available as a manual choice).
 
 Orientation is part of that decision. Landscape images are preferred for
-full-bleed and near-full hero slides. Portrait images are preferred for
-two-up layouts; single portraits stay in protected treatments instead of
-being automatically forced into a wide crop.
+full-bleed hero slides. Portrait images are preferred for two-up layouts;
+single portraits stay in protected treatments instead of being automatically
+forced into a wide crop.
 
 Other treatments can be forced across the slideshow:
 
@@ -66,6 +68,12 @@ Near Full, Window Frame, Print, Contained, and the two-up styles. This lets a
 background added to the master composition show through every inset slide.
 Treatments that intentionally create a background, such as Soft Background,
 retain their generated background layers.
+
+The **Add background behind everything** option (on by default) places a
+refined dark charcoal field with a soft vignette under every slide in the
+master composition, so the transparent inset layouts sit on a designed ground
+rather than pure black. The generated `MASTER BACKGROUND` and `MASTER
+VIGNETTE` layers can be recolored, replaced with your own artwork, or deleted.
 
 The **Max enlargement** setting controls how far foreground archive images may be
 enlarged in automatic and protected treatments. Explicit Full Bleed and Near
