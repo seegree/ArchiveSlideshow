@@ -11,6 +11,9 @@
     // Deep blue used by the Soft Background treatment, as both the base field
     // and the color wash that tints the blurred echo behind the photo.
     var SOFT_BG_WASH_COLOR = [0.04, 0.06, 0.16];
+    // Warm off-white hairline drawn down the seam of Edge to Edge pairs so the
+    // split reads as a deliberate diptych rather than one broken image.
+    var EDGE_RULE_COLOR = [0.94, 0.93, 0.90];
     var IMAGE_EXTENSIONS = {
         "jpg": true,
         "jpeg": true,
@@ -1475,6 +1478,28 @@
                 addPhotoControls(layer, true);
             }
         }
+
+        if (style === "Edge to Edge") {
+            // Added last so the rule sits on top of both photo windows.
+            addEdgeToEdgeRule(comp, landscape, config);
+        }
+    }
+
+    function addEdgeToEdgeRule(comp, landscape, config) {
+        var thickness = Math.max(
+            2,
+            Math.round(Math.min(config.width, config.height) * 0.002)
+        );
+        var size = landscape
+            ? [thickness, config.height]
+            : [config.width, thickness];
+        return addRectangle(
+            comp,
+            "CENTER RULE",
+            size,
+            [config.width / 2, config.height / 2],
+            EDGE_RULE_COLOR
+        );
     }
 
     function createAsymmetricTwoUp(

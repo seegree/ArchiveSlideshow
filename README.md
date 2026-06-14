@@ -73,7 +73,8 @@ Full choices prioritize the selected composition over that automatic limit.
 
 Pairing can be set to Never, Occasionally, When low-res, or As often as
 possible. Pair styles include Hero + Support, Offset Pair, clipped window
-frames, loose prints, clean contained images, and edge-to-edge split screens.
+frames, loose prints, clean contained images, and edge-to-edge split screens
+divided by a thin center rule.
 Both photographs receive one shared movement per slide; paired pans use
 complementary directions rather than mixing a static image with a moving one.
 
