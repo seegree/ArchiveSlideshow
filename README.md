@@ -39,16 +39,18 @@ their intended sequence. Each folder can also generate a section card.
 ## Adaptive Image Treatments
 
 **Auto Mix** evaluates effective resolution and aspect-ratio mismatch, then
-varies the treatment across the sequence. Eligible images become full-bleed
-hero slides. Other images rotate among the stronger protected treatments —
-soft-background, window-frame, and print. Near Full is used only sparingly,
-and Contained is left out of the automatic rotation entirely (it remains
-available as a manual choice).
+varies the treatment across the sequence. Eligible landscape and square images
+become full-bleed slides most of the time — the strongest single-image layout.
+Images that cannot fill the frame cleanly (portraits, low-resolution, or
+strong aspect mismatches) rotate evenly among the soft-background,
+window-frame, and print treatments, with Near Full used only occasionally and
+Contained left out of the automatic rotation entirely (it remains available as
+a manual choice).
 
 Orientation is part of that decision. Landscape images are preferred for
-full-bleed hero slides. Portrait images are preferred for two-up layouts;
-single portraits stay in protected treatments instead of being automatically
-forced into a wide crop.
+full-bleed slides. Portrait images are preferred for two-up layouts; single
+portraits stay in protected treatments instead of being automatically forced
+into a wide crop.
 
 Other treatments can be forced across the slideshow:
 
@@ -85,6 +87,9 @@ frames, loose prints, clean contained images, and edge-to-edge split screens
 divided by a thin center rule.
 Both photographs receive one shared movement per slide; paired pans use
 complementary directions rather than mixing a static image with a moving one.
+When pair style is set to Auto Mix, the rotation favors Hero + Support, Offset
+Pair, and Edge to Edge, using window-frame, print, and clean pairs only
+occasionally.
 
 Two low-resolution images pair regardless of orientation, since sharing a
 slide means each needs less enlargement. A low-resolution image may also look

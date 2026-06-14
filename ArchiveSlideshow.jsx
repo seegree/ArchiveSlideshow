@@ -1215,58 +1215,41 @@
             [config.width * 0.94, config.height * 0.92]
         );
 
-        // Strong-rotation pool for Auto Mix. Contained is intentionally left
-        // out of automatic selection (it stays available as a manual choice);
-        // Near Full is used sparingly below rather than as a default.
-        var protectedTreatments = [
-            "Soft Background",
-            "Window Frame",
-            "Print"
-        ];
+        var canFullBleed =
+            coverScale <= config.maxUpscale * 1.2 && retained >= 0.55;
+        var canNearFull = nearScale <= config.maxUpscale * 1.15;
+
+        // Fallback pool for images that cannot go full bleed: the
+        // "use sparingly" single treatments, rotated evenly so none of them
+        // dominates. Contained stays out of automatic selection entirely.
+        var fallback = ["Soft Background", "Window Frame", "Print"];
+        var pick = fallback[slideIndex % fallback.length];
+        // Near Full is the barest of the fallbacks; use it only occasionally,
+        // and only when the image fits without enlargement.
+        if (canNearFull && slideIndex % 5 === 4) {
+            pick = "Near Full";
+        }
+
+        if (forceHero) {
+            if (coverScale <= config.maxUpscale * 1.2) {
+                return "Full Bleed";
+            }
+            return canNearFull ? "Near Full" : pick;
+        }
 
         if (isPortraitImage(item)) {
-            return protectedTreatments[slideIndex % protectedTreatments.length];
+            // Portraits would need a bad crop to fill the frame, so they stay
+            // in the protected fallback rotation.
+            return pick;
         }
 
-        if (isLandscapeImage(item)) {
-            // Hero promotion only when the image can take it; low-res images
-            // fall through to the protected treatments instead.
-            if (forceHero && coverScale <= config.maxUpscale * 1.2) {
-                return "Full Bleed";
-            }
-            if (forceHero && nearScale <= config.maxUpscale * 1.15) {
-                return "Near Full";
-            }
-            if (
-                coverScale <= config.maxUpscale * 1.2 &&
-                retained >= 0.55 &&
-                slideIndex % 2 === 0
-            ) {
-                return "Full Bleed";
-            }
-            if (
-                nearScale <= config.maxUpscale * 1.15 &&
-                slideIndex % 4 === 3
-            ) {
-                return "Near Full";
-            }
-            return protectedTreatments[slideIndex % protectedTreatments.length];
-        }
-
-        if (
-            coverScale <= config.maxUpscale * 1.2 &&
-            retained >= 0.55 &&
-            slideIndex % 3 === 0
-        ) {
+        // Landscape and square images favor Full Bleed, the only strong
+        // single-image layout, most of the time, dropping to a sparingly
+        // treatment now and then for rhythm.
+        if (canFullBleed && slideIndex % 4 !== 3) {
             return "Full Bleed";
         }
-        if (
-            nearScale <= config.maxUpscale * 1.15 &&
-            slideIndex % 4 === 3
-        ) {
-            return "Near Full";
-        }
-        return protectedTreatments[slideIndex % protectedTreatments.length];
+        return pick;
     }
 
     function portraitCropWarning(item, treatment, config) {
@@ -1287,16 +1270,21 @@
         if (config.multiStyle !== "Auto Mix") {
             return config.multiStyle;
         }
-        // Strong pair styles dominate the rotation; Clean appears only once
-        // per cycle as an occasional plainer beat.
+        // Strong pair styles (Hero + Support, Offset Pair, Edge to Edge) each
+        // appear three times per cycle; the sparingly styles (Window Frame,
+        // Prints, Clean) appear once each.
         var styles = [
             "Hero + Support",
             "Offset Pair",
-            "Prints",
+            "Edge to Edge",
+            "Hero + Support",
+            "Offset Pair",
             "Edge to Edge",
             "Window Frame",
             "Hero + Support",
             "Offset Pair",
+            "Edge to Edge",
+            "Prints",
             "Clean"
         ];
         return styles[slideIndex % styles.length];
