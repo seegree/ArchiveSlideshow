@@ -147,8 +147,23 @@ Each slide comp records the move it was built with in two places:
   in the timeline and Project panel.
 - The comp **comment** holds the full detail — `treatment`, `motion`, `kind`
   (single or pair), and the `src` path of each source photo — under the
-  `Archive Slideshow Slide` tag. This is also the save-state that a future
-  re-roll feature will read to rebuild a slide with a different layout.
+  `Archive Slideshow Slide` tag. This is also the save-state the Cycle button
+  reads to rebuild a slide with a different layout.
+
+## Cycling a slide's layout
+
+To re-roll a single slide without rebuilding the whole slideshow, open or
+select its slide comp and click **Cycle Active Slide's Layout**. Each click
+rebuilds that comp in place with the next layout in the list — single-photo
+slides step through the single treatments, two-up slides step through the pair
+styles — so you can cycle until it looks right. The master timeline updates
+automatically because it only references the slide.
+
+Cycling keeps the slide's size, duration, and the movement it was built with,
+and reads the current panel's color treatment and max enlargement. It rebuilds
+the slide from its recorded source photos, so any manual tweaks to that slide
+are replaced. Old photo-window precomps from the previous layout are removed
+as part of the re-roll.
 
 ## MVP Notes
 

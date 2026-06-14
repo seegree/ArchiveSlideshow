@@ -17,6 +17,23 @@
     // Refined warm charcoal placed under every slide when the background
     // option is on, so inset layouts sit on a ground instead of pure black.
     var MASTER_BG_COLOR = [0.07, 0.067, 0.063];
+    // Order the Cycle button steps through when re-rolling a slide's layout.
+    var SINGLE_CYCLE = [
+        "Full Bleed",
+        "Near Full",
+        "Soft Background",
+        "Window Frame",
+        "Print",
+        "Contained"
+    ];
+    var PAIR_CYCLE = [
+        "Hero + Support",
+        "Offset Pair",
+        "Window Frame",
+        "Prints",
+        "Clean",
+        "Edge to Edge"
+    ];
     var IMAGE_EXTENSIONS = {
         "jpg": true,
         "jpeg": true,
@@ -73,45 +90,36 @@
         );
 
         var canvasPanel = addPanel(panel, "Canvas");
-        var widthRow = addNumberRow(
-            canvasPanel,
-            "Width",
-            1920,
-            "px",
-            "Width of the slideshow in pixels."
+        var canvasRow = canvasPanel.add("group");
+        canvasRow.orientation = "row";
+        canvasRow.alignChildren = ["left", "center"];
+        canvasRow.spacing = 12;
+        var widthField = addCompactNumber(
+            canvasRow, "W", 1920, 5, undefined, "Canvas width in pixels."
         );
-        var heightRow = addNumberRow(
-            canvasPanel,
-            "Height",
-            1080,
-            "px",
-            "Height of the slideshow in pixels."
+        var heightField = addCompactNumber(
+            canvasRow, "H", 1080, 5, undefined, "Canvas height in pixels."
         );
-        var frameRateRow = addNumberRow(
-            canvasPanel,
-            "Frame rate",
-            30,
-            "fps",
+        var frameRateField = addCompactNumber(
+            canvasRow, "FPS", 30, 4, undefined,
             "Frames per second, such as 24, 25, 29.97, or 30."
         );
-        var secondsRow = addNumberRow(
-            canvasPanel,
-            "Seconds / image",
-            4,
-            "s",
-            "How long each photo stays on screen before the next begins."
+        var secondsField = addCompactNumber(
+            canvasRow, "Sec", 4, 4, undefined,
+            "Seconds each photo stays on screen."
         );
-        var backgroundCheck = canvasPanel.add(
-            "checkbox",
-            undefined,
-            "Add background behind everything"
-        );
+        var backgroundCheck = canvasRow.add("checkbox", undefined, "BG");
         backgroundCheck.value = true;
-        backgroundCheck.alignment = ["left", "center"];
         backgroundCheck.helpTip =
-            "Place a designed dark background under every slide so inset " +
-            "layouts sit on a ground instead of black. Recolor or replace " +
-            "the MASTER BACKGROUND layer afterward.";
+            "Add a designed dark background with a soft vignette under every " +
+            "slide so inset layouts sit on a ground instead of black. " +
+            "Recolor or replace the MASTER BACKGROUND layer afterward.";
+        var upscaleField = addCompactNumber(
+            canvasPanel, "Max enlargement", 110, 4, "%",
+            "How far photos may be enlarged past original size before " +
+            "switching to a protective layout. 100 means never enlarge. " +
+            "Over-enlarged slides are labeled CHECK ENLARGEMENT for review."
+        );
 
         var stylePanel = addPanel(panel, "Style");
         var treatmentRow = addDropdownRow(
@@ -182,47 +190,25 @@
         );
 
         var transitionPanel = addPanel(panel, "Transitions");
-        var transitionHelp = transitionPanel.add(
-            "statictext",
-            undefined,
-            "Checked styles cycle in order. Check one to use it throughout."
-        );
-        transitionHelp.alignment = ["fill", "top"];
-        var transitionChoices = transitionPanel.add("group");
-        transitionChoices.orientation = "row";
-        transitionChoices.alignChildren = ["left", "center"];
-        var cutCheck = transitionChoices.add("checkbox", undefined, "Cut");
+        transitionPanel.helpTip =
+            "Checked styles cycle in order; check one to use it throughout.";
+        var transitionRow = transitionPanel.add("group");
+        transitionRow.orientation = "row";
+        transitionRow.alignChildren = ["left", "center"];
+        transitionRow.spacing = 8;
+        var cutCheck = transitionRow.add("checkbox", undefined, "Cut");
         cutCheck.helpTip = "Instant change with no overlap.";
-        var dissolveCheck = transitionChoices.add(
-            "checkbox",
-            undefined,
-            "Dissolve"
-        );
+        var dissolveCheck = transitionRow.add("checkbox", undefined, "Dissolve");
         dissolveCheck.helpTip = "One slide fades into the next.";
-        var pushCheck = transitionChoices.add("checkbox", undefined, "Push");
+        var pushCheck = transitionRow.add("checkbox", undefined, "Push");
         pushCheck.helpTip =
             "The next slide pushes the current one off screen.";
         cutCheck.value = false;
         dissolveCheck.value = true;
         pushCheck.value = false;
-        var transitionDurationRow = addNumberRow(
-            transitionPanel,
-            "Duration",
-            0.6,
-            "s",
+        var durationField = addCompactNumber(
+            transitionRow, "   Duration", 0.6, 4, "s",
             "Length of each dissolve or push, in seconds."
-        );
-
-        var qualityPanel = addPanel(panel, "Quality");
-        var upscaleRow = addNumberRow(
-            qualityPanel,
-            "Max enlargement",
-            110,
-            "%",
-            "How far photos may be enlarged past their original size " +
-                "before switching to a protective layout. 100 means never " +
-                "enlarge. Over-enlarged slides are labeled CHECK " +
-                "ENLARGEMENT for review."
         );
 
         var buildButton = panel.add(
@@ -236,6 +222,16 @@
             "Create the slideshow. Everything generated is ordinary, " +
             "editable After Effects material.";
 
+        var cycleButton = panel.add(
+            "button",
+            undefined,
+            "Cycle Active Slide's Layout"
+        );
+        cycleButton.alignment = ["fill", "top"];
+        cycleButton.helpTip =
+            "Open or select a generated slide comp, then click to rebuild it " +
+            "with the next layout. Click again to keep cycling.";
+
         var status = panel.add(
             "statictext",
             undefined,
@@ -248,14 +244,14 @@
         ui = {
             sourceLabel: sourceLabel,
             sectionCards: sectionRow.input,
-            width: widthRow.input,
-            height: heightRow.input,
-            frameRate: frameRateRow.input,
-            seconds: secondsRow.input,
+            width: widthField.input,
+            height: heightField.input,
+            frameRate: frameRateField.input,
+            seconds: secondsField.input,
             background: backgroundCheck,
             pairTiming: pairTimingRow.input,
             treatment: treatmentRow.input,
-            maxUpscale: upscaleRow.input,
+            maxUpscale: upscaleField.input,
             multi: multiRow.input,
             multiStyle: multiStyleRow.input,
             motion: motionRow.input,
@@ -263,12 +259,13 @@
             cut: cutCheck,
             dissolve: dissolveCheck,
             push: pushCheck,
-            transitionDuration: transitionDurationRow.input,
+            transitionDuration: durationField.input,
             status: status
         };
 
         chooseButton.onClick = chooseSourceFolder;
         buildButton.onClick = buildFromUI;
+        cycleButton.onClick = cycleActiveSlide;
         panel.onResizing = panel.onResize = function () {
             this.layout.resize();
         };
@@ -286,24 +283,22 @@
         return panel;
     }
 
-    function addNumberRow(parent, label, value, suffixText, helpTip) {
-        var row = parent.add("group");
-        row.orientation = "row";
-        row.alignChildren = ["left", "center"];
-        var labelControl = row.add("statictext", undefined, label);
-        labelControl.preferredSize.width = 104;
-        var input = row.add("edittext", undefined, String(value));
-        input.characters = 8;
-        var suffix = row.add(
-            "statictext",
-            undefined,
-            suffixText === undefined ? "" : suffixText
-        );
+    function addCompactNumber(parent, label, value, chars, suffix, helpTip) {
+        var group = parent.add("group");
+        group.orientation = "row";
+        group.alignChildren = ["left", "center"];
+        group.spacing = 3;
+        var labelControl = group.add("statictext", undefined, label);
+        var input = group.add("edittext", undefined, String(value));
+        input.characters = chars;
+        if (suffix) {
+            group.add("statictext", undefined, suffix);
+        }
         if (helpTip !== undefined) {
             labelControl.helpTip = helpTip;
             input.helpTip = helpTip;
         }
-        return { row: row, input: input, suffix: suffix };
+        return { group: group, input: input };
     }
 
     function addDropdownRow(parent, label, items, selectedIndex, helpTip) {
@@ -433,6 +428,294 @@
             message += "\n...and " + (skipped.length - limit) + " more";
         }
         alert(message, SCRIPT_NAME);
+    }
+
+    function cycleActiveSlide() {
+        var comp = activeSlideComp();
+        if (comp === null) {
+            alert(
+                "Open or select a generated slide comp first (one whose " +
+                "comment starts with \"" + SLIDE_TAG + "\").",
+                SCRIPT_NAME
+            );
+            return;
+        }
+        var record = parseSlideComment(comp.comment);
+        if (record === null || record.kind === "section") {
+            alert(
+                "This slide has no layout to cycle (section cards are skipped).",
+                SCRIPT_NAME
+            );
+            return;
+        }
+
+        var config = readConfig();
+        if (config === null) {
+            return;
+        }
+
+        var images = recoverImages(record.sources);
+        if (images === null) {
+            alert(
+                "Could not find the source photo(s) for this slide on disk, " +
+                "so its layout cannot be rebuilt.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+
+        var cycle = record.kind === "pair" ? PAIR_CYCLE : SINGLE_CYCLE;
+        var nextTreatment =
+            cycle[(indexOfTreatment(cycle, record.treatment) + 1) % cycle.length];
+
+        app.beginUndoGroup("Cycle Slide Layout");
+        try {
+            reRollSlide(comp, record, nextTreatment, images, config);
+            setStatus(
+                "Cycled \"" + comp.name + "\" to " + nextTreatment + "."
+            );
+            comp.openInViewer();
+        } catch (error) {
+            alert(
+                "Could not change the layout:\n" + error.message,
+                SCRIPT_NAME
+            );
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+
+    function activeSlideComp() {
+        if (isSlideComp(app.project.activeItem)) {
+            return app.project.activeItem;
+        }
+        var selection = app.project.selection;
+        var i;
+        for (i = 0; i < selection.length; i += 1) {
+            if (isSlideComp(selection[i])) {
+                return selection[i];
+            }
+        }
+        return null;
+    }
+
+    function isSlideComp(item) {
+        return item !== null &&
+            (item instanceof CompItem) &&
+            parseSlideComment(item.comment) !== null;
+    }
+
+    function parseSlideComment(comment) {
+        if (typeof comment !== "string" || comment.indexOf(SLIDE_TAG) !== 0) {
+            return null;
+        }
+        var record = {
+            treatment: null,
+            motion: null,
+            kind: null,
+            sources: []
+        };
+        var lines = comment.split("\n");
+        var i;
+        for (i = 0; i < lines.length; i += 1) {
+            var line = lines[i];
+            if (line.indexOf("treatment: ") === 0) {
+                record.treatment = line.substring(11);
+            } else if (line.indexOf("motion: ") === 0) {
+                record.motion = line.substring(8);
+            } else if (line.indexOf("kind: ") === 0) {
+                record.kind = line.substring(6);
+            } else if (line.indexOf("src: ") === 0) {
+                record.sources.push(line.substring(5));
+            }
+        }
+        if (record.treatment === null || record.kind === null) {
+            return null;
+        }
+        return record;
+    }
+
+    function indexOfTreatment(list, treatment) {
+        var i;
+        for (i = 0; i < list.length; i += 1) {
+            if (list[i] === treatment) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    function recoverImages(sources) {
+        if (sources.length === 0) {
+            return null;
+        }
+        var images = [];
+        var i;
+        for (i = 0; i < sources.length; i += 1) {
+            var item = findOrImportFootage(sources[i]);
+            if (item === null) {
+                return null;
+            }
+            images.push({ item: item, file: new File(sources[i]) });
+        }
+        return images;
+    }
+
+    function findOrImportFootage(path) {
+        var i;
+        for (i = 1; i <= app.project.numItems; i += 1) {
+            var existing = app.project.item(i);
+            if (existing instanceof FootageItem) {
+                try {
+                    if (existing.mainSource &&
+                            existing.mainSource.file &&
+                            existing.mainSource.file.fsName === path) {
+                        return existing;
+                    }
+                } catch (error) {
+                    // Solids and placeholders have no file; skip them.
+                }
+            }
+        }
+        var file = new File(path);
+        if (!file.exists) {
+            return null;
+        }
+        try {
+            return app.project.importFile(new ImportOptions(file));
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function reRollSlide(comp, record, nextTreatment, images, config) {
+        resetProjectNameCache();
+        var numberStr = slideNumberPrefix(comp.name);
+        var index = parseInt(numberStr, 10);
+        index = (isNaN(index) || index < 1) ? 0 : index - 1;
+
+        // Re-roll keeps the comp's own format and the recorded motion, but
+        // takes look and max enlargement from the current panel settings.
+        config.width = comp.width;
+        config.height = comp.height;
+        config.frameRate = comp.frameRate;
+        config.motion = record.motion ? record.motion : config.motion;
+        config.multiStyle = nextTreatment;
+        // So the portrait-crop warning fires if this re-roll forces a portrait
+        // into Full Bleed.
+        config.treatment = nextTreatment;
+
+        var newRecord = {
+            treatment: nextTreatment,
+            motion: config.motion,
+            kind: record.kind,
+            sources: record.sources
+        };
+        var baseLabel = displayBaseName(images[0].file);
+        if (record.kind === "pair") {
+            baseLabel += " + " + displayBaseName(images[1].file);
+        }
+        var moveTag = slideMoveTag(newRecord);
+        var provisional = baseLabel + (moveTag ? " " + moveTag : "");
+
+        // Drop the old layout's nested photo-window comps and layers.
+        var kids = collectChildComps(comp);
+        while (comp.numLayers > 0) {
+            comp.layer(1).remove();
+        }
+        removeComps(kids);
+
+        // Name now so any new nested comps inherit the new treatment.
+        comp.name = uniqueProjectItemName(
+            numberStr + " - " + safeName(provisional)
+        );
+
+        maxPhotoScale = 0;
+        var portraitWarn = null;
+        if (record.kind === "pair") {
+            createTwoUpSlide(comp, images, index, config);
+        } else {
+            portraitWarn = portraitCropWarning(
+                images[0].item,
+                nextTreatment,
+                config
+            );
+            createSingleSlide(
+                comp,
+                images[0],
+                index,
+                config,
+                nextTreatment,
+                portraitWarn
+            );
+        }
+
+        var enlargeWarn = null;
+        if (maxPhotoScale > ENLARGEMENT_WARNING_SCALE) {
+            enlargeWarn =
+                "Photo shown at about " + Math.round(maxPhotoScale) +
+                "% of its original size; review sharpness or choose a " +
+                "smaller treatment.";
+        }
+        var warning = combineWarnings(portraitWarn, enlargeWarn);
+
+        var finalLabel = provisional;
+        if (portraitWarn) {
+            finalLabel = "CHECK PORTRAIT CROP - " + finalLabel;
+        }
+        if (enlargeWarn) {
+            finalLabel = "CHECK ENLARGEMENT - " + finalLabel;
+        }
+        if (finalLabel !== provisional) {
+            comp.name = uniqueProjectItemName(
+                numberStr + " - " + safeName(finalLabel)
+            );
+        }
+        comp.comment = buildSlideComment(newRecord, warning);
+        setWarningLabelState(comp, warning !== null);
+    }
+
+    function collectChildComps(comp) {
+        var kids = [];
+        var i;
+        for (i = 1; i <= comp.numLayers; i += 1) {
+            var source = comp.layer(i).source;
+            if (source instanceof CompItem) {
+                kids.push(source);
+            }
+        }
+        return kids;
+    }
+
+    function removeComps(list) {
+        var i;
+        for (i = 0; i < list.length; i += 1) {
+            try {
+                list[i].remove();
+            } catch (error) {
+                // Already gone, or referenced elsewhere; leave it in place.
+            }
+        }
+    }
+
+    function slideNumberPrefix(name) {
+        var match = String(name).match(/^(\d+)/);
+        return match === null ? "1" : match[1];
+    }
+
+    function combineWarnings(first, second) {
+        if (first && second) {
+            return first + " " + second;
+        }
+        return first || second || null;
+    }
+
+    function setWarningLabelState(comp, on) {
+        try {
+            comp.label = on ? 2 : 0;
+        } catch (error) {
+            // Label colors are a convenience and can vary by AE version.
+        }
     }
 
     function readConfig() {
