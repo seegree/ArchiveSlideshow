@@ -933,11 +933,17 @@
                 config
             );
         }
+        var record = slideRecord(spec, index, config);
+        var moveTag = slideMoveTag(record);
+
         var label = spec.type === "section"
             ? "Section - " + spec.title
             : displayBaseName(spec.images[0].file);
         if (spec.type === "images" && spec.images.length === 2) {
             label += " + " + displayBaseName(spec.images[1].file);
+        }
+        if (moveTag) {
+            label += " " + moveTag;
         }
         if (spec.warning) {
             label = "CHECK PORTRAIT CROP - " + label;
@@ -952,8 +958,7 @@
             config.frameRate
         );
         comp.parentFolder = parentFolder;
-        comp.comment = SLIDE_TAG +
-            (spec.warning ? "\nWARNING: " + spec.warning : "");
+        comp.comment = buildSlideComment(record, spec.warning);
         if (spec.warning) {
             setWarningLabel(comp);
         }
@@ -987,7 +992,7 @@
             comp.name = uniqueProjectItemName(
                 number + " - " + safeName("CHECK ENLARGEMENT - " + label)
             );
-            comp.comment = SLIDE_TAG + "\nWARNING: " + spec.warning;
+            comp.comment = buildSlideComment(record, spec.warning);
             setWarningLabel(comp);
         }
         return {
@@ -996,6 +1001,96 @@
             spec: spec,
             warning: spec.warning || null
         };
+    }
+
+    function slideRecord(spec, index, config) {
+        if (spec.type === "section") {
+            return {
+                treatment: "Section",
+                motion: null,
+                kind: "section",
+                sources: []
+            };
+        }
+        var sources = [];
+        var treatment;
+        var kind;
+        if (spec.images.length === 2) {
+            treatment = resolveTwoUpStyle(index, config);
+            kind = "pair";
+            sources.push(spec.images[0].file.fsName);
+            sources.push(spec.images[1].file.fsName);
+        } else {
+            treatment = spec.treatment;
+            kind = "single";
+            sources.push(spec.images[0].file.fsName);
+        }
+        return {
+            treatment: treatment,
+            motion: resolveMotionRecipe(index, config),
+            kind: kind,
+            sources: sources
+        };
+    }
+
+    function buildSlideComment(record, warning) {
+        // A machine-readable block: the first line stays SLIDE_TAG so existing
+        // detection keeps working, and the fields below record what was built
+        // so the move is visible and a future re-roll can rebuild the slide.
+        var lines = [SLIDE_TAG];
+        if (record !== null) {
+            lines.push("treatment: " + record.treatment);
+            if (record.motion) {
+                lines.push("motion: " + record.motion);
+            }
+            lines.push("kind: " + record.kind);
+            var i;
+            for (i = 0; i < record.sources.length; i += 1) {
+                lines.push("src: " + record.sources[i]);
+            }
+        }
+        if (warning) {
+            lines.push("WARNING: " + warning);
+        }
+        return lines.join("\n");
+    }
+
+    function slideMoveTag(record) {
+        if (record === null || record.kind === "section") {
+            return "";
+        }
+        var tag = shortTreatmentName(record.treatment);
+        if (record.motion) {
+            tag += " / " + shortMotionName(record.motion);
+        }
+        return "[" + tag + "]";
+    }
+
+    function shortTreatmentName(name) {
+        var map = {
+            "Full Bleed": "Full",
+            "Near Full": "Near",
+            "Soft Background": "Soft BG",
+            "Window Frame": "Frame",
+            "Print": "Print",
+            "Contained": "Contain",
+            "Hero + Support": "Hero",
+            "Offset Pair": "Offset",
+            "Prints": "Prints",
+            "Clean": "Clean",
+            "Edge to Edge": "Edge"
+        };
+        return map[name] === undefined ? name : map[name];
+    }
+
+    function shortMotionName(name) {
+        var map = {
+            "Still": "Still",
+            "Gentle Push": "Push",
+            "Gentle Drift": "Drift",
+            "Push + Drift": "Push+Drift"
+        };
+        return map[name] === undefined ? name : map[name];
     }
 
     function createSectionCard(comp, title, config) {

@@ -138,6 +138,18 @@ The result has no runtime dependency on the panel. Timing, framing, text,
 keyframes, transitions, and image choices can all be adjusted manually after
 generation.
 
+## How to tell what a slide used
+
+Each slide comp records the move it was built with in two places:
+
+- The comp **name** ends with a short tag such as `[Soft BG / Push]` or
+  `[Edge / Push+Drift]`, so the treatment and movement are visible at a glance
+  in the timeline and Project panel.
+- The comp **comment** holds the full detail — `treatment`, `motion`, `kind`
+  (single or pair), and the `src` path of each source photo — under the
+  `Archive Slideshow Slide` tag. This is also the save-state that a future
+  re-roll feature will read to rebuild a slide with a different layout.
+
 ## MVP Notes
 
 - Supported source extensions include JPEG, PNG, TIFF, PSD, BMP, GIF, HEIC,
