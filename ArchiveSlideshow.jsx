@@ -1918,7 +1918,7 @@
                     duration,
                     [startScale[0] * amount, startScale[1] * amount]
                 );
-                easeTwoKeyframes(scale);
+                easeSettle(scale);
             }
         }
 
@@ -1937,7 +1937,7 @@
                     duration,
                     [start[0] + distance * direction, start[1]]
                 );
-                easeTwoKeyframes(position);
+                easeSettle(position);
             }
         }
     }
@@ -2034,6 +2034,34 @@
             }
         } catch (error) {
             // Keep generation working if Tint is unavailable in this AE build.
+        }
+    }
+
+    function easeSettle(property) {
+        // Linear from the start, decelerating to a settle at the final
+        // keyframe so the image comes to rest just before the transition.
+        if (property.numKeys !== 2) {
+            return;
+        }
+        try {
+            var linear = new KeyframeEase(0, 0.1);
+            var settle = new KeyframeEase(0, 65);
+            var dimensions = 1;
+            if (!property.isSpatial && property.value instanceof Array) {
+                dimensions = property.value.length;
+            }
+            var linearEases = [];
+            var settleEases = [];
+            var i;
+            for (i = 0; i < dimensions; i += 1) {
+                linearEases.push(linear);
+                settleEases.push(settle);
+            }
+            property.setTemporalEaseAtKey(1, linearEases, linearEases);
+            property.setTemporalEaseAtKey(2, settleEases, settleEases);
+        } catch (error) {
+            // If the eases are rejected the keyframes stay linear, which is
+            // the preferred fallback anyway.
         }
     }
 
