@@ -159,10 +159,17 @@
         var multiRow = addDropdownRow(
             pairsPanel,
             "Pair photos",
-            ["Never", "Occasionally", "When low-res", "As often as possible"],
+            [
+                "Never (all singles)",
+                "Occasionally",
+                "When low-res",
+                "Often",
+                "Always (all pairs)"
+            ],
             1,
-            "When two photos share one slide. Low-resolution photos pair " +
-                "up so each needs less enlargement."
+            "How often two photos share one slide. \"Never\" forces every " +
+                "slide single; \"Always\" pairs every slide (using the Pair " +
+                "style below), leaving only a final odd photo single."
         );
         var multiStyleRow = addDropdownRow(
             pairsPanel,
@@ -1082,8 +1089,14 @@
                     isLandscapeImage(first.item) &&
                     isExpectedHero(first.item, config);
                 var partnerIndex = -1;
-                if (
-                    config.multi !== "Never" &&
+                if (config.multi === "Always (all pairs)") {
+                    // Greedy: pair every photo two-by-two, ignoring the taste
+                    // rules; only a final odd photo in the section stays single.
+                    if (j + 1 < items.length) {
+                        partnerIndex = j + 1;
+                    }
+                } else if (
+                    config.multi !== "Never (all singles)" &&
                     !previousWasPair &&
                     !forceHero &&
                     j > 0
@@ -1179,7 +1192,7 @@
         if (bothPortrait) {
             return true;
         }
-        if (config.multi === "As often as possible") {
+        if (config.multi === "Often") {
             return true;
         }
         if (

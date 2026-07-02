@@ -81,8 +81,12 @@ The **Max enlargement** setting controls how far foreground archive images may b
 enlarged in automatic and protected treatments. Explicit Full Bleed and Near
 Full choices prioritize the selected composition over that automatic limit.
 
-Pairing can be set to Never, Occasionally, When low-res, or As often as
-possible. Pair styles include Hero + Support, Offset Pair, clipped window
+Pairing can be set to Never (all singles), Occasionally, When low-res, Often,
+or Always (all pairs). "Never" forces every slide to a single photo, and
+"Always" pairs every photo two-by-two — using the chosen Pair style — leaving
+only a final odd photo in a section as a single. Between those extremes, the
+sequence keeps pairs tasteful (no two in a row, none at a section opening).
+Pair styles include Hero + Support, Offset Pair, clipped window
 frames, loose prints, clean contained images, and edge-to-edge split screens
 divided by a thin center rule.
 Both photographs receive one shared movement per slide; paired pans use
