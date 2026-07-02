@@ -275,7 +275,16 @@
         buildButton.onClick = buildFromUI;
         cycleButton.onClick = cycleActiveSlide;
         panel.onResizing = panel.onResize = function () {
-            this.layout.resize();
+            // A resize can fire during startup restore before layout is ready;
+            // never let it throw (and never pop a modal, which AE blocks at
+            // launch and reports as a "line 0" error).
+            try {
+                if (this.layout) {
+                    this.layout.resize();
+                }
+            } catch (resizeError) {
+                // Ignore; the panel is still usable without the reflow.
+            }
         };
 
         panel.layout.layout(true);
@@ -2603,9 +2612,16 @@
         return text;
     }
 
-    var panel = buildUI(thisObj);
-    if (panel instanceof Window) {
-        panel.center();
-        panel.show();
+    try {
+        var panel = buildUI(thisObj);
+        if (panel instanceof Window) {
+            panel.center();
+            panel.show();
+        }
+    } catch (startupError) {
+        // Contain any construction error so it cannot escape as a bare
+        // "line 0" failure when AE restores the docked panel at launch.
+        // No alert here on purpose: a modal at startup is exactly what AE
+        // refuses to run, which produces the line 0 error in the first place.
     }
 })(this);
