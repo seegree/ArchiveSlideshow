@@ -723,7 +723,7 @@
             return null;
         }
         try {
-            return app.project.importFile(new ImportOptions(file));
+            return importWithoutDialogs(new ImportOptions(file));
         } catch (error) {
             return null;
         }
@@ -1003,6 +1003,105 @@
         }
     }
 
+    // Reads the first bytes of a file and names the image format they
+    // actually contain, or null when the bytes match no known signature.
+    function sniffImageFormat(file) {
+        var head = null;
+        try {
+            file.encoding = "BINARY";
+            if (!file.open("r")) {
+                return null;
+            }
+            head = file.read(16);
+            file.close();
+        } catch (error) {
+            try {
+                file.close();
+            } catch (closeError) {
+                // Already closed or never opened.
+            }
+            return null;
+        }
+        if (head === null || head.length < 4) {
+            return null;
+        }
+        function byteAt(index) {
+            return head.charCodeAt(index) & 0xff;
+        }
+        var ascii = head.substring(0, 4);
+        if (byteAt(0) === 0x89 && ascii.substring(1, 4) === "PNG") {
+            return "png";
+        }
+        if (byteAt(0) === 0xff && byteAt(1) === 0xd8 && byteAt(2) === 0xff) {
+            return "jpg";
+        }
+        if (ascii === "GIF8") {
+            return "gif";
+        }
+        if (ascii.substring(0, 2) === "BM") {
+            return "bmp";
+        }
+        if (
+            (byteAt(0) === 0x49 && byteAt(1) === 0x49 &&
+                byteAt(2) === 0x2a && byteAt(3) === 0x00) ||
+            (byteAt(0) === 0x4d && byteAt(1) === 0x4d &&
+                byteAt(2) === 0x00 && byteAt(3) === 0x2a)
+        ) {
+            return "tif";
+        }
+        if (ascii === "8BPS") {
+            return "psd";
+        }
+        if (
+            byteAt(0) === 0x76 && byteAt(1) === 0x2f &&
+            byteAt(2) === 0x31 && byteAt(3) === 0x01
+        ) {
+            return "exr";
+        }
+        if (
+            ascii === "RIFF" &&
+            head.length >= 12 &&
+            head.substring(8, 12) === "WEBP"
+        ) {
+            return "webp";
+        }
+        if (head.length >= 8 && head.substring(4, 8) === "ftyp") {
+            return "heic";
+        }
+        return null;
+    }
+
+    // Groups whose members share a decoder, so e.g. .jpeg data in a .jpg
+    // file is not reported as a mismatch.
+    function formatFamily(extension) {
+        if (extension === "jpeg") {
+            return "jpg";
+        }
+        if (extension === "tiff") {
+            return "tif";
+        }
+        return extension;
+    }
+
+    // After Effects picks its decoder by file extension, so a file whose
+    // contents differ from its name fails with a confusing modal error.
+    // Returns a human-readable skip reason for such files, or null when the
+    // file looks importable.
+    function describeFormatMismatch(file) {
+        var name = displayFileName(file);
+        var match = name.match(/\.([^.]+)$/);
+        if (match === null) {
+            return null;
+        }
+        var claimed = formatFamily(match[1].toLowerCase());
+        var actual = sniffImageFormat(file);
+        if (actual === null || actual === claimed) {
+            return null;
+        }
+        return name + " — this is really " + actual.toUpperCase() +
+            " data; rename the file to ." + actual + " and rebuild";
+    }
+
     function isSupportedImage(file) {
         var match = file.name.toLowerCase().match(/\.([^.]+)$/);
         return match !== null && IMAGE_EXTENSIONS[match[1]] === true;
@@ -1154,9 +1253,17 @@
                 setStatus(
                     "Importing image " + processed + " of " + totalFiles + "..."
                 );
+                // A file whose contents don't match its extension (a JPEG
+                // named .png, say) makes AE's decoder pop a modal error per
+                // file; catch it here with an actionable reason instead.
+                var mismatch = describeFormatMismatch(sections[i].files[j]);
+                if (mismatch !== null) {
+                    skipped.push(mismatch);
+                    continue;
+                }
                 try {
                     var options = new ImportOptions(sections[i].files[j]);
-                    var item = app.project.importFile(options);
+                    var item = importWithoutDialogs(options);
                     item.parentFolder = sectionFolder;
                     items.push({
                         item: item,
@@ -1177,6 +1284,32 @@
             }
         }
         return imported;
+    }
+
+    // Imports with AE's own error dialogs held back, so one bad file cannot
+    // interrupt a long import with a modal; the failure still throws and is
+    // reported in the panel's skip summary instead.
+    function importWithoutDialogs(options) {
+        var suppressing = false;
+        try {
+            if (app.beginSuppressDialogs) {
+                app.beginSuppressDialogs();
+                suppressing = true;
+            }
+        } catch (suppressError) {
+            suppressing = false;
+        }
+        try {
+            return app.project.importFile(options);
+        } finally {
+            if (suppressing) {
+                try {
+                    app.endSuppressDialogs(false);
+                } catch (endError) {
+                    // Suppression state is best-effort on older AE versions.
+                }
+            }
+        }
     }
 
     function countImportedImages(sections) {
