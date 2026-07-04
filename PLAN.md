@@ -22,7 +22,7 @@ pair styles, count 3 → triptych styles — and each count gets its own cycle
 list. Do this refactor before adding 3-up layouts (folds naturally into
 Step 2).
 
-## Step 1 — Checkbox style pools
+## Step 1 — Checkbox style pools ✅ (v0.4.0)
 
 Extend the Transitions panel's model (checked styles form the pool; one
 checked = used throughout) to the other style choices:
@@ -44,7 +44,7 @@ Internals: config fields become arrays; `chooseTreatment` /
 `resolveTwoUpStyle` filter their rotations by the pool. Low risk, no
 timeline surgery.
 
-## Step 2 — Merge / Split post-ops
+## Step 2 — Merge / Split post-ops ✅ (v0.5.0; kind→count refactor deferred to Step 3)
 
 Two new buttons beside Cycle, reusing its machinery (`activeSlideComp`,
 `parseSlideComment`, `reRollSlide`):

@@ -185,6 +185,27 @@ the slide from its recorded source photos, so any manual tweaks to that slide
 are replaced. Old photo-window precomps from the previous layout are removed
 as part of the re-roll.
 
+## Merging and splitting slides
+
+Two more post-operations reshape pairing after generation, using the same
+slide targeting as Cycle:
+
+- **Merge with Next** combines the selected single-photo slide with the next
+  single into one pair slide, choosing a layout from the checked pair
+  styles. It refuses to cross a section card.
+- **Split Pair** breaks the selected pair into two single slides, one per
+  photo, joined by the panel's first checked transition. Both halves keep
+  the movement the pair was built with.
+
+The **Pair length** dropdown sets the timing at click time. With
+**Standard** (the default), a merged pair occupies one slot and later slides
+move up; a split gives each photo a full slot and later slides move back.
+With **Doubled**, a merge spans both original slots and a split halves the
+slot, so nothing else moves. Either way the transition at the affected seam
+is rebuilt and the master composition's duration and background layers are
+adjusted to match; transitions elsewhere travel with their slides
+untouched.
+
 ## MVP Notes
 
 - Supported source extensions include JPEG, PNG, TIFF, PSD, BMP, GIF, HEIC,

@@ -2,7 +2,7 @@
 
 (function archiveSlideshowPanel(thisObj) {
     var SCRIPT_NAME = "Archive Slideshow";
-    var VERSION = "0.4.0";
+    var VERSION = "0.5.0";
     var SLIDE_TAG = "Archive Slideshow Slide";
     var MASTER_TAG = "Archive Slideshow Master";
     // A photo displayed beyond this percent of its original size gets a
@@ -258,6 +258,22 @@
             "rebuild it with the next layout. Click again to keep cycling. " +
             "Only checked styles are cycled through.";
 
+        var pairOpsRow = panel.add("group");
+        pairOpsRow.orientation = "row";
+        pairOpsRow.alignChildren = ["fill", "center"];
+        pairOpsRow.alignment = ["fill", "top"];
+        var mergeButton = pairOpsRow.add("button", undefined, "Merge with Next");
+        mergeButton.helpTip =
+            "Combine the selected single-photo slide with the next single " +
+            "into one pair slide. Pair length sets the timing: Standard " +
+            "keeps one slot and moves later slides up; Doubled spans both " +
+            "slots.";
+        var splitButton = pairOpsRow.add("button", undefined, "Split Pair");
+        splitButton.helpTip =
+            "Break the selected pair slide into two single slides. Pair " +
+            "length sets the timing: Standard gives each photo a full slot " +
+            "and moves later slides back; Doubled halves the slot.";
+
         var status = panel.add(
             "statictext",
             undefined,
@@ -292,6 +308,8 @@
         chooseButton.onClick = chooseSourceFolder;
         buildButton.onClick = buildFromUI;
         cycleButton.onClick = cycleActiveSlide;
+        mergeButton.onClick = mergeActiveSlide;
+        splitButton.onClick = splitActiveSlide;
         panel.onResizing = panel.onResize = function () {
             // A resize can fire during startup restore before layout is ready;
             // never let it throw (and never pop a modal, which AE blocks at
@@ -591,6 +609,564 @@
         } finally {
             app.endUndoGroup();
         }
+    }
+
+    function mergeActiveSlide() {
+        var target = activeSlideComp();
+        if (target === null) {
+            alert(
+                "Select a single-photo slide first: open its comp, click its " +
+                "layer in the master timeline, or select it in the Project " +
+                "panel. Then click Merge with Next.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+        var comp = target.comp;
+        var record = parseSlideComment(comp.comment);
+        if (record === null || record.kind === "section") {
+            alert("Section cards cannot be merged.", SCRIPT_NAME);
+            return;
+        }
+        if (record.kind !== "single") {
+            alert(
+                "This slide is already a pair. Merge combines two " +
+                "single-photo slides.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+
+        var config = readConfig();
+        if (config === null) {
+            return;
+        }
+
+        var context = masterContextFor(comp, target.layer);
+        if (context === null) {
+            alert(
+                "Could not find this slide's layer in a master timeline, so " +
+                "there is no \"next\" slide to merge with.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+        var master = context.master;
+        var layerA = context.layer;
+        var layerB = nextSlideLayer(master, layerA);
+        if (layerB === null) {
+            alert(
+                "This is the last slide in the master; there is no next " +
+                "slide to merge with.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+        var recordB = parseSlideComment(layerB.source.comment);
+        if (recordB === null || recordB.kind === "section") {
+            alert(
+                "The next slide is a section card; merging cannot cross a " +
+                "section boundary.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+        if (recordB.kind !== "single") {
+            alert(
+                "The next slide is already a pair. Merge combines two " +
+                "single-photo slides.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+
+        var sources = record.sources.concat(recordB.sources);
+        var images = recoverImages(sources);
+        if (images === null) {
+            alert(
+                "Could not find the source photo(s) for these slides on " +
+                "disk, so they cannot be merged.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+
+        app.beginUndoGroup("Merge Slides");
+        try {
+            config.width = comp.width;
+            config.height = comp.height;
+            config.frameRate = comp.frameRate;
+
+            var startA = layerA.inPoint;
+            var durationA = layerA.outPoint - startA;
+            var newDuration = config.pairTiming === "Doubled"
+                ? layerB.outPoint - startA
+                : durationA;
+            newDuration = quantizeTime(newDuration, comp.frameRate);
+
+            // Capture the seam beyond the second slide before touching it.
+            var seam = seamAfterLayer(master, layerB);
+
+            // The old outgoing transition into the removed slide lives on
+            // this layer; clear it before rebuilding.
+            removeTransitionKeys(
+                layerA,
+                layerB.inPoint - halfFrame(comp.frameRate),
+                layerA.outPoint + halfFrame(comp.frameRate)
+            );
+
+            // Drop the absorbed slide: its layer, comp, and nested comps.
+            var compB = layerB.source;
+            var kidsB = collectChildComps(compB);
+            layerB.remove();
+            try {
+                compB.remove();
+            } catch (removeError) {
+                // Still referenced elsewhere; leave the orphan comp in place.
+            }
+            removeComps(kidsB);
+
+            // Rebuild this comp as a pair with a style from the checked pool.
+            var index = parseInt(slideNumberPrefix(comp.name), 10);
+            index = (isNaN(index) || index < 1) ? 0 : index - 1;
+            var pairStyle = resolveTwoUpStyle(index, config);
+            var mergedRecord = {
+                treatment: record.treatment,
+                motion: record.motion,
+                kind: "pair",
+                sources: sources
+            };
+            comp.duration = newDuration;
+            reRollSlide(comp, mergedRecord, pairStyle, images, config);
+            layerA.outPoint = startA + newDuration;
+            syncMasterLayer(layerA, comp);
+
+            // Ripple everything after the merge point and reattach the seam.
+            if (seam !== null) {
+                var newSeamStart = roundToFrame(
+                    startA + newDuration - seam.overlap,
+                    comp.frameRate
+                );
+                shiftSlideLayers(
+                    master,
+                    seam.start - halfFrame(comp.frameRate),
+                    newSeamStart - seam.start,
+                    [layerA]
+                );
+                applyOutgoingTransition(layerA, newSeamStart, seam, config);
+            }
+            fitMasterToSlides(master);
+
+            setStatus(
+                "Merged into \"" + comp.name + "\" (" + pairStyle + ")."
+            );
+            if (target.reveal) {
+                comp.openInViewer();
+            }
+        } catch (error) {
+            alert("Could not merge the slides:\n" + error.message, SCRIPT_NAME);
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+
+    function splitActiveSlide() {
+        var target = activeSlideComp();
+        if (target === null) {
+            alert(
+                "Select a pair slide first: open its comp, click its layer " +
+                "in the master timeline, or select it in the Project panel. " +
+                "Then click Split Pair.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+        var comp = target.comp;
+        var record = parseSlideComment(comp.comment);
+        if (record === null || record.kind !== "pair") {
+            alert(
+                "Only a pair slide can be split. Select a slide built from " +
+                "two photos.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+
+        var config = readConfig();
+        if (config === null) {
+            return;
+        }
+
+        var context = masterContextFor(comp, target.layer);
+        if (context === null) {
+            alert(
+                "Could not find this slide's layer in a master timeline, so " +
+                "the second photo has nowhere to go.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+        var master = context.master;
+        var layerA = context.layer;
+
+        var images = recoverImages(record.sources);
+        if (images === null || images.length < 2) {
+            alert(
+                "Could not find both source photos on disk, so this pair " +
+                "cannot be split.",
+                SCRIPT_NAME
+            );
+            return;
+        }
+
+        app.beginUndoGroup("Split Pair");
+        try {
+            config.width = comp.width;
+            config.height = comp.height;
+            config.frameRate = comp.frameRate;
+
+            var startA = layerA.inPoint;
+            var durationA = layerA.outPoint - startA;
+            var each = config.pairTiming === "Doubled"
+                ? quantizeTime(durationA / 2, comp.frameRate)
+                : quantizeTime(durationA, comp.frameRate);
+
+            // Capture the seam beyond this slide before touching it; its
+            // outgoing half moves onto the new second slide.
+            var seam = seamAfterLayer(master, layerA);
+            if (seam !== null) {
+                removeTransitionKeys(
+                    layerA,
+                    seam.start - halfFrame(comp.frameRate),
+                    layerA.outPoint + halfFrame(comp.frameRate)
+                );
+            }
+
+            // Rebuild this comp as a single of the first photo, choosing a
+            // treatment from the checked pool.
+            var index = parseInt(slideNumberPrefix(comp.name), 10);
+            index = (isNaN(index) || index < 1) ? 0 : index - 1;
+            var firstTreatment = chooseTreatment(
+                images[0].item,
+                config,
+                index,
+                false
+            );
+            var singleRecord = {
+                treatment: record.treatment,
+                motion: record.motion,
+                kind: "single",
+                sources: [record.sources[0]]
+            };
+            comp.duration = each;
+            reRollSlide(comp, singleRecord, firstTreatment, [images[0]], config);
+            layerA.outPoint = startA + each;
+            syncMasterLayer(layerA, comp);
+
+            // Build the second photo's slide comp beside this one. The
+            // motion was pinned to the pair's recipe by reRollSlide, so both
+            // halves keep the movement they had together. reRollSlide also
+            // pinned config.treatment to the first half's choice; restore
+            // the pool-derived value so the second photo chooses freely.
+            config.treatment = config.treatments.length === 1
+                ? config.treatments[0]
+                : "Auto Mix";
+            var numberStr = slideNumberPrefix(comp.name);
+            var slideB = createSlideComp(
+                {
+                    type: "images",
+                    section: "",
+                    images: [images[1]],
+                    duration: each
+                },
+                index,
+                Math.pow(10, numberStr.length) - 1,
+                config,
+                comp.parentFolder
+            );
+
+            // Place its layer just above this one, using the panel's first
+            // checked transition between the two halves.
+            var layerB = master.layers.add(slideB.comp);
+            layerB.name = slideB.comp.name;
+            if (slideB.warning) {
+                layerB.comment = slideB.warning;
+                setWarningLabel(layerB);
+            }
+            layerB.moveBefore(layerA);
+            var styleAB = config.transitions[0];
+            var overlapAB = styleAB === "Cut"
+                ? 0
+                : roundToFrame(
+                    Math.min(config.transitionDuration, each * 0.45),
+                    comp.frameRate
+                );
+            var startB = roundToFrame(
+                startA + each - overlapAB,
+                comp.frameRate
+            );
+            layerB.startTime = startB;
+            layerB.inPoint = startB;
+            layerB.outPoint = startB + each;
+            applyTransition(
+                layerA,
+                layerB,
+                startB,
+                { style: styleAB, duration: overlapAB },
+                config
+            );
+
+            // Ripple everything after the split point and reattach the seam
+            // to the new second slide.
+            if (seam !== null) {
+                var newSeamStart = roundToFrame(
+                    layerB.outPoint - seam.overlap,
+                    comp.frameRate
+                );
+                shiftSlideLayers(
+                    master,
+                    seam.start - halfFrame(comp.frameRate),
+                    newSeamStart - seam.start,
+                    [layerA, layerB]
+                );
+                applyOutgoingTransition(layerB, newSeamStart, seam, config);
+            }
+            fitMasterToSlides(master);
+
+            setStatus(
+                "Split into \"" + comp.name + "\" and \"" +
+                slideB.comp.name + "\"."
+            );
+            if (target.reveal) {
+                comp.openInViewer();
+            }
+        } catch (error) {
+            alert("Could not split the pair:\n" + error.message, SCRIPT_NAME);
+        } finally {
+            app.endUndoGroup();
+        }
+    }
+
+    function isMasterComp(item) {
+        return item !== null &&
+            (item instanceof CompItem) &&
+            typeof item.comment === "string" &&
+            item.comment.indexOf(MASTER_TAG) === 0;
+    }
+
+    // Finds the master timeline holding this slide comp. Prefers the layer
+    // the user actually clicked; otherwise searches tagged master comps for
+    // the first layer sourcing the comp.
+    function masterContextFor(comp, knownLayer) {
+        if (knownLayer !== null && isMasterComp(knownLayer.containingComp)) {
+            return { master: knownLayer.containingComp, layer: knownLayer };
+        }
+        var i;
+        var j;
+        for (i = 1; i <= app.project.numItems; i += 1) {
+            var item = app.project.item(i);
+            if (!isMasterComp(item)) {
+                continue;
+            }
+            for (j = 1; j <= item.numLayers; j += 1) {
+                if (item.layer(j).source === comp) {
+                    return { master: item, layer: item.layer(j) };
+                }
+            }
+        }
+        return null;
+    }
+
+    function isSlideLayer(layer) {
+        try {
+            return layer.source instanceof CompItem &&
+                parseSlideComment(layer.source.comment) !== null;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    // The slide layer that starts soonest after the given layer, or null.
+    function nextSlideLayer(master, layer) {
+        var best = null;
+        var threshold = layer.inPoint + halfFrame(master.frameRate);
+        var i;
+        for (i = 1; i <= master.numLayers; i += 1) {
+            var candidate = master.layer(i);
+            if (candidate === layer || !isSlideLayer(candidate)) {
+                continue;
+            }
+            if (candidate.inPoint > threshold &&
+                    (best === null || candidate.inPoint < best.inPoint)) {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    // Describes the transition between a layer and the slide after it:
+    // which layer follows, where it starts, how long the overlap is, and
+    // whether the incoming keyframes look like a dissolve or a push.
+    function seamAfterLayer(master, layer) {
+        var next = nextSlideLayer(master, layer);
+        if (next === null) {
+            return null;
+        }
+        var overlap = layer.outPoint - next.inPoint;
+        if (overlap < halfFrame(master.frameRate)) {
+            overlap = 0;
+        }
+        var style = "Cut";
+        if (overlap > 0) {
+            var windowEnd = next.inPoint + overlap +
+                halfFrame(master.frameRate);
+            if (hasKeyInWindow(
+                    transformProperty(next, "ADBE Position"),
+                    next.inPoint - halfFrame(master.frameRate),
+                    windowEnd
+                )) {
+                style = "Push";
+            } else {
+                style = "Dissolve";
+            }
+        }
+        return {
+            layer: next,
+            start: next.inPoint,
+            overlap: overlap,
+            style: style
+        };
+    }
+
+    function transformProperty(layer, name) {
+        return layer.property("ADBE Transform Group").property(name);
+    }
+
+    function hasKeyInWindow(property, start, end) {
+        var i;
+        for (i = 1; i <= property.numKeys; i += 1) {
+            var time = property.keyTime(i);
+            if (time >= start && time <= end) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function removeKeysInWindow(property, start, end) {
+        var i;
+        for (i = property.numKeys; i >= 1; i -= 1) {
+            var time = property.keyTime(i);
+            if (time >= start && time <= end) {
+                property.removeKey(i);
+            }
+        }
+    }
+
+    // Clears transition keyframes (opacity and position) on a master slide
+    // layer within a time window, leaving keyframes elsewhere untouched.
+    function removeTransitionKeys(layer, start, end) {
+        removeKeysInWindow(transformProperty(layer, "ADBE Opacity"), start, end);
+        removeKeysInWindow(transformProperty(layer, "ADBE Position"), start, end);
+    }
+
+    // Writes only the outgoing half of a seam transition. The incoming
+    // half already exists on the following layer and traveled with it when
+    // it was shifted.
+    function applyOutgoingTransition(layer, start, seam, config) {
+        if (seam.style === "Cut" || seam.overlap <= 0) {
+            return;
+        }
+        var end = start + seam.overlap;
+        if (seam.style === "Dissolve") {
+            animateOpacity(layer, start, end, 100, 0);
+        } else if (seam.style === "Push") {
+            var position = transformProperty(layer, "ADBE Position");
+            position.setValueAtTime(
+                start,
+                [config.width / 2, config.height / 2]
+            );
+            position.setValueAtTime(
+                end,
+                [-config.width / 2, config.height / 2]
+            );
+            easeTwoKeyframes(position);
+        }
+    }
+
+    // Shifts every slide layer starting at or after a time by delta,
+    // carrying its keyframes along. Non-slide furniture (backgrounds,
+    // vignettes) starts at zero and is never moved.
+    function shiftSlideLayers(master, fromTime, delta, excluded) {
+        if (delta === 0) {
+            return;
+        }
+        var i;
+        var j;
+        for (i = 1; i <= master.numLayers; i += 1) {
+            var layer = master.layer(i);
+            if (!isSlideLayer(layer) || layer.inPoint < fromTime) {
+                continue;
+            }
+            var skip = false;
+            for (j = 0; j < excluded.length; j += 1) {
+                if (layer === excluded[j]) {
+                    skip = true;
+                }
+            }
+            if (!skip) {
+                layer.startTime += delta;
+            }
+        }
+    }
+
+    // Sets the master's duration to the last slide's end and keeps the
+    // generated background and vignette spanning the whole timeline.
+    function fitMasterToSlides(master) {
+        var lastOut = 0;
+        var i;
+        for (i = 1; i <= master.numLayers; i += 1) {
+            var layer = master.layer(i);
+            if (isSlideLayer(layer) && layer.outPoint > lastOut) {
+                lastOut = layer.outPoint;
+            }
+        }
+        if (lastOut <= 0) {
+            return;
+        }
+        try {
+            master.duration = lastOut;
+        } catch (durationError) {
+            // Leave the old duration if AE rejects the change.
+        }
+        for (i = 1; i <= master.numLayers; i += 1) {
+            var furniture = master.layer(i);
+            if (furniture.name === "MASTER BACKGROUND" ||
+                    furniture.name === "MASTER VIGNETTE") {
+                try {
+                    furniture.outPoint = lastOut;
+                } catch (outError) {
+                    // The background stays usable even if it cannot stretch.
+                }
+            }
+        }
+    }
+
+    function syncMasterLayer(layer, comp) {
+        try {
+            layer.name = comp.name;
+            layer.label = comp.label;
+        } catch (error) {
+            // The comp itself is correct even if the layer rejects it.
+        }
+    }
+
+    function halfFrame(frameRate) {
+        return 0.5 / Math.max(1, frameRate);
+    }
+
+    function roundToFrame(time, frameRate) {
+        return Math.round(time * frameRate) / frameRate;
     }
 
     function activeSlideComp() {
