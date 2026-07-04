@@ -2,7 +2,7 @@
 
 (function archiveSlideshowPanel(thisObj) {
     var SCRIPT_NAME = "Archive Slideshow";
-    var VERSION = "0.3.0";
+    var VERSION = "0.4.0";
     var SLIDE_TAG = "Archive Slideshow Slide";
     var MASTER_TAG = "Archive Slideshow Master";
     // A photo displayed beyond this percent of its original size gets a
@@ -122,11 +122,10 @@
         );
 
         var stylePanel = addPanel(panel, "Style");
-        var treatmentRow = addDropdownRow(
+        var treatmentPool = addCheckboxPool(
             stylePanel,
             "Image treatment",
             [
-                "Auto Mix",
                 "Full Bleed",
                 "Near Full",
                 "Soft Background",
@@ -134,18 +133,28 @@
                 "Print",
                 "Contained"
             ],
-            0,
-            "How photos are framed on the canvas. Auto Mix varies the " +
-                "framing based on each photo's size, shape, and quality."
+            [
+                "Full Bleed",
+                "Near Full",
+                "Soft Background",
+                "Window Frame",
+                "Print",
+                "Contained"
+            ],
+            3,
+            "Check the framings photos may use. One checked forces it on " +
+                "every slide; several let the mix choose among them based " +
+                "on each photo's size, shape, and quality."
         );
-        var motionRow = addDropdownRow(
+        var motionPool = addCheckboxPool(
             stylePanel,
             "Movement",
-            ["Still", "Gentle Push", "Gentle Drift", "Push + Drift", "Cycle"],
-            1,
-            "How photos move during a slide. Gentle Push is the calm " +
-                "default; Cycle rotates through the moving styles, favoring " +
-                "push."
+            ["Still", "Gentle Push", "Gentle Drift", "Push + Drift"],
+            ["Gentle Push"],
+            4,
+            "Check the movements slides may use. One checked applies " +
+                "throughout; several rotate, favoring push. Checking Still " +
+                "alongside others mixes in still slides occasionally."
         );
         var lookRow = addDropdownRow(
             stylePanel,
@@ -171,11 +180,10 @@
                 "slide single; \"Always\" pairs every slide (using the Pair " +
                 "style below), leaving only a final odd photo single."
         );
-        var multiStyleRow = addDropdownRow(
+        var multiStylePool = addCheckboxPool(
             pairsPanel,
             "Pair style",
             [
-                "Auto Mix",
                 "Hero + Support",
                 "Offset Pair",
                 "Window Frame",
@@ -183,9 +191,18 @@
                 "Clean",
                 "Edge to Edge"
             ],
-            0,
-            "Layout used when two photos share a slide. Auto Mix varies " +
-                "the style."
+            [
+                "Hero + Support",
+                "Offset Pair",
+                "Window Frame",
+                "Prints",
+                "Clean",
+                "Edge to Edge"
+            ],
+            3,
+            "Check the layouts a two-photo slide may use. One checked " +
+                "forces it on every pair; several let the mix rotate among " +
+                "them, favoring the strong styles."
         );
         var pairTimingRow = addDropdownRow(
             pairsPanel,
@@ -238,7 +255,8 @@
         cycleButton.helpTip =
             "Select a slide — open its comp, click its layer in the master " +
             "timeline, or select it in the Project panel — then click to " +
-            "rebuild it with the next layout. Click again to keep cycling.";
+            "rebuild it with the next layout. Click again to keep cycling. " +
+            "Only checked styles are cycled through.";
 
         var status = panel.add(
             "statictext",
@@ -258,11 +276,11 @@
             seconds: secondsField.input,
             background: backgroundCheck,
             pairTiming: pairTimingRow.input,
-            treatment: treatmentRow.input,
+            treatments: treatmentPool.boxes,
             maxUpscale: upscaleField.input,
             multi: multiRow.input,
-            multiStyle: multiStyleRow.input,
-            motion: motionRow.input,
+            multiStyles: multiStylePool.boxes,
+            motions: motionPool.boxes,
             look: lookRow.input,
             cut: cutCheck,
             dissolve: dissolveCheck,
@@ -333,6 +351,50 @@
             input.helpTip = helpTip;
         }
         return { row: row, input: input };
+    }
+
+    function addCheckboxPool(parent, label, names, checkedNames, perRow, helpTip) {
+        var row = parent.add("group");
+        row.orientation = "row";
+        row.alignChildren = ["left", "top"];
+        var labelControl = row.add("statictext", undefined, label);
+        labelControl.preferredSize.width = 104;
+        if (helpTip !== undefined) {
+            labelControl.helpTip = helpTip;
+        }
+        var column = row.add("group");
+        column.orientation = "column";
+        column.alignChildren = ["left", "top"];
+        column.spacing = 2;
+        var boxes = [];
+        var line = null;
+        var i;
+        for (i = 0; i < names.length; i += 1) {
+            if (i % perRow === 0) {
+                line = column.add("group");
+                line.orientation = "row";
+                line.alignChildren = ["left", "center"];
+                line.spacing = 8;
+            }
+            var box = line.add("checkbox", undefined, names[i]);
+            box.value = indexOfTreatment(checkedNames, names[i]) !== -1;
+            if (helpTip !== undefined) {
+                box.helpTip = helpTip;
+            }
+            boxes.push({ name: names[i], box: box });
+        }
+        return { row: row, boxes: boxes };
+    }
+
+    function checkedPoolNames(boxes) {
+        var names = [];
+        var i;
+        for (i = 0; i < boxes.length; i += 1) {
+            if (boxes[i].box.value) {
+                names.push(boxes[i].name);
+            }
+        }
+        return names;
     }
 
     function setStatus(text) {
@@ -483,9 +545,25 @@
             return;
         }
 
-        var cycle = record.kind === "pair" ? PAIR_CYCLE : SINGLE_CYCLE;
+        // Cycle only through the styles checked in the panel, in the standard
+        // order; fall back to the full list if the pool filters everything out.
+        var fullCycle = record.kind === "pair" ? PAIR_CYCLE : SINGLE_CYCLE;
+        var pool = record.kind === "pair"
+            ? config.multiStyles
+            : config.treatments;
+        var cycle = pool ? filterByPool(fullCycle, pool) : fullCycle;
+        if (cycle.length === 0) {
+            cycle = fullCycle;
+        }
         var nextTreatment =
             cycle[(indexOfTreatment(cycle, record.treatment) + 1) % cycle.length];
+        if (nextTreatment === record.treatment) {
+            setStatus(
+                "\"" + comp.name + "\" already uses the only checked style (" +
+                record.treatment + "). Check more styles to cycle."
+            );
+            return;
+        }
 
         app.beginUndoGroup("Cycle Slide Layout");
         try {
@@ -591,6 +669,21 @@
             }
         }
         return -1;
+    }
+
+    function poolContains(pool, name) {
+        return indexOfTreatment(pool, name) !== -1;
+    }
+
+    function filterByPool(list, pool) {
+        var out = [];
+        var i;
+        for (i = 0; i < list.length; i += 1) {
+            if (poolContains(pool, list[i])) {
+                out.push(list[i]);
+            }
+        }
+        return out;
     }
 
     function recoverImages(sources) {
@@ -810,6 +903,22 @@
             return null;
         }
 
+        var treatments = checkedPoolNames(ui.treatments);
+        if (treatments.length === 0) {
+            alert("Check at least one image treatment.", SCRIPT_NAME);
+            return null;
+        }
+        var motions = checkedPoolNames(ui.motions);
+        if (motions.length === 0) {
+            alert("Check at least one movement.", SCRIPT_NAME);
+            return null;
+        }
+        var multiStyles = checkedPoolNames(ui.multiStyles);
+        if (multiStyles.length === 0) {
+            alert("Check at least one pair style.", SCRIPT_NAME);
+            return null;
+        }
+
         return {
             width: Math.round(width),
             height: Math.round(height),
@@ -818,11 +927,16 @@
             background: ui.background.value,
             sectionCards: selectedText(ui.sectionCards),
             pairTiming: selectedText(ui.pairTiming),
-            treatment: selectedText(ui.treatment),
+            // A single checked style is a forced choice, exactly like the
+            // old dropdown; several checked constrain the automatic mix.
+            treatment: treatments.length === 1 ? treatments[0] : "Auto Mix",
+            treatments: treatments,
             maxUpscale: maxUpscale,
             multi: selectedText(ui.multi),
-            multiStyle: selectedText(ui.multiStyle),
-            motion: selectedText(ui.motion),
+            multiStyle: multiStyles.length === 1 ? multiStyles[0] : "Auto Mix",
+            multiStyles: multiStyles,
+            motion: motions.length === 1 ? motions[0] : "Cycle",
+            motions: motions,
             look: selectedText(ui.look),
             transitions: transitions,
             transitionDuration: transitionDuration
@@ -1170,6 +1284,14 @@
             config.treatment !== "Auto Mix" ||
             !isLandscapeImage(item)
         ) {
+            return false;
+        }
+        if (
+            config.treatments &&
+            !poolContains(config.treatments, "Full Bleed") &&
+            !poolContains(config.treatments, "Near Full")
+        ) {
+            // No hero-capable framing is checked, so nothing qualifies.
             return false;
         }
         var coverScale = Math.max(
@@ -1650,23 +1772,44 @@
         var canFullBleed =
             coverScale <= config.maxUpscale * 1.2 && retained >= 0.55;
         var canNearFull = nearScale <= config.maxUpscale * 1.15;
+        var pool = config.treatments || SINGLE_CYCLE;
 
-        // Fallback pool for images that cannot go full bleed: the
-        // "use sparingly" single treatments, rotated evenly so none of them
-        // dominates. Contained stays out of automatic selection entirely.
-        var fallback = ["Soft Background", "Window Frame", "Print"];
+        // Fallback rotation for images that cannot go full bleed, drawn from
+        // the checked pool: the "use sparingly" protective treatments first.
+        // Contained joins the rotation only when nothing softer is checked,
+        // so an all-checked pool behaves like the original Auto Mix.
+        var fallback = filterByPool(
+            ["Soft Background", "Window Frame", "Print"],
+            pool
+        );
+        if (fallback.length === 0) {
+            fallback = filterByPool(["Contained", "Near Full"], pool);
+        }
+        if (fallback.length === 0) {
+            fallback = pool;
+        }
         var pick = fallback[slideIndex % fallback.length];
         // Near Full is the barest of the fallbacks; use it only occasionally,
         // and only when the image fits without enlargement.
-        if (canNearFull && slideIndex % 5 === 4) {
+        if (
+            poolContains(pool, "Near Full") &&
+            canNearFull &&
+            slideIndex % 5 === 4
+        ) {
             pick = "Near Full";
         }
 
         if (forceHero) {
-            if (coverScale <= config.maxUpscale * 1.2) {
+            if (
+                poolContains(pool, "Full Bleed") &&
+                coverScale <= config.maxUpscale * 1.2
+            ) {
                 return "Full Bleed";
             }
-            return canNearFull ? "Near Full" : pick;
+            if (poolContains(pool, "Near Full") && canNearFull) {
+                return "Near Full";
+            }
+            return pick;
         }
 
         if (isPortraitImage(item)) {
@@ -1678,7 +1821,11 @@
         // Landscape and square images favor Full Bleed, the only strong
         // single-image layout, most of the time, dropping to a sparingly
         // treatment now and then for rhythm.
-        if (canFullBleed && slideIndex % 4 !== 3) {
+        if (
+            poolContains(pool, "Full Bleed") &&
+            canFullBleed &&
+            slideIndex % 4 !== 3
+        ) {
             return "Full Bleed";
         }
         return pick;
@@ -1704,8 +1851,9 @@
         }
         // Strong pair styles (Hero + Support, Offset Pair, Edge to Edge) each
         // appear three times per cycle; the sparingly styles (Window Frame,
-        // Prints, Clean) appear once each.
-        var styles = [
+        // Prints, Clean) appear once each. Unchecked styles drop out of the
+        // rotation while the checked ones keep their relative weights.
+        var pattern = [
             "Hero + Support",
             "Offset Pair",
             "Edge to Edge",
@@ -1719,6 +1867,12 @@
             "Prints",
             "Clean"
         ];
+        var styles = config.multiStyles
+            ? filterByPool(pattern, config.multiStyles)
+            : pattern;
+        if (styles.length === 0) {
+            styles = pattern;
+        }
         return styles[slideIndex % styles.length];
     }
 
@@ -2218,15 +2372,23 @@
         if (config.motion !== "Cycle") {
             return config.motion;
         }
-        // Push-weighted rotation: push appears in four of five slots so the
-        // motion reads calm and intentional rather than constantly drifting.
-        var recipes = [
+        // Push-weighted rotation: push appears most often so the motion reads
+        // calm and intentional rather than constantly drifting. Still joins
+        // the rotation only when it is checked; unchecked movements drop out.
+        var pattern = [
             "Gentle Push",
             "Push + Drift",
             "Gentle Push",
             "Gentle Drift",
+            "Still",
             "Push + Drift"
         ];
+        var recipes = config.motions
+            ? filterByPool(pattern, config.motions)
+            : filterByPool(pattern, ["Gentle Push", "Gentle Drift", "Push + Drift"]);
+        if (recipes.length === 0) {
+            recipes = pattern;
+        }
         return recipes[index % recipes.length];
     }
 

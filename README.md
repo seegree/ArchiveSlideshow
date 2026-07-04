@@ -28,9 +28,15 @@ C:\Program Files\Adobe\Adobe After Effects 2026\Support Files\Scripts\ScriptUI P
 
 1. Choose a folder containing archive images.
 2. Set the canvas size and seconds per image.
-3. Choose an image treatment, pairing policy, movement, color treatment,
-   and transitions.
+3. Check the image treatments, movements, pair styles, and transitions the
+   slideshow may use, and choose a pairing policy and color treatment.
 4. Click **Build Editable Slideshow**.
+
+Style controls share one model: **checked styles form the allowed pool**.
+Check one style to force it on every slide; check several to let the
+automatic mix choose among them; check everything for the full mix. A
+narrow brief — say, cuts only, gentle push only — is just a matter of
+unchecking everything else.
 
 The panel scans subfolders recursively. Folder and file names are sorted
 naturally, so names such as `01 Intro`, `02 Family`, and `photo-10.jpg` retain
@@ -38,21 +44,23 @@ their intended sequence. Each folder can also generate a section card.
 
 ## Adaptive Image Treatments
 
-**Auto Mix** evaluates effective resolution and aspect-ratio mismatch, then
-varies the treatment across the sequence. Eligible landscape and square images
+With more than one treatment checked, the mix evaluates effective resolution
+and aspect-ratio mismatch, then varies the treatment across the sequence —
+constrained to the checked pool. Eligible landscape and square images
 become full-bleed slides most of the time — the strongest single-image layout.
 Images that cannot fill the frame cleanly (portraits, low-resolution, or
 strong aspect mismatches) rotate evenly among the soft-background,
 window-frame, and print treatments, with Near Full used only occasionally and
-Contained left out of the automatic rotation entirely (it remains available as
-a manual choice).
+Contained joining the automatic rotation only when none of the softer
+protective treatments are checked (checking it alone forces it, as with any
+single checked style).
 
 Orientation is part of that decision. Landscape images are preferred for
 full-bleed slides. Portrait images are preferred for two-up layouts; single
 portraits stay in protected treatments instead of being automatically forced
 into a wide crop.
 
-Other treatments can be forced across the slideshow:
+The six treatments:
 
 - **Full Bleed** fills the canvas, including when that requires enlargement.
 - **Near Full** fits the image inside a narrow transparent perimeter.
@@ -91,9 +99,9 @@ frames, loose prints, clean contained images, and edge-to-edge split screens
 divided by a thin center rule.
 Both photographs receive one shared movement per slide; paired pans use
 complementary directions rather than mixing a static image with a moving one.
-When pair style is set to Auto Mix, the rotation favors Hero + Support, Offset
+With several pair styles checked, the rotation favors Hero + Support, Offset
 Pair, and Edge to Edge, using window-frame, print, and clean pairs only
-occasionally.
+occasionally; unchecked styles drop out of the rotation.
 
 Two low-resolution images pair regardless of orientation, since sharing a
 slide means each needs less enlargement. A low-resolution image may also look
@@ -114,7 +122,7 @@ Generated photo layers include expression-backed Effect Controls for
 adjust crop and movement after generation while preserving the underlying
 recipe keyframes.
 
-Explicitly choosing **Full Bleed** still overrides the orientation rules. A
+Checking **Full Bleed** alone still overrides the orientation rules. A
 portrait image forced into that treatment receives a `CHECK PORTRAIT CROP`
 name, warning comment, and colored label on both its slide and the master
 timeline so the crop is easy to review.
@@ -164,8 +172,10 @@ any of three ways, then click **Cycle Active Slide's Layout**:
 - select the slide comp in the Project panel.
 
 Each click rebuilds that slide in place with the next layout in the list —
-single-photo slides step through the single treatments, two-up slides step
-through the pair styles — so you can cycle until it looks right. Cycling from
+single-photo slides step through the checked image treatments, two-up slides
+step through the checked pair styles — so you can cycle until it looks right.
+Narrowing the checkboxes narrows the cycle, which makes re-rolling faster
+when you already know the styles you want. Cycling from
 the master timeline keeps the master in view and renames its layer to match, so
 you can keep working in context.
 
