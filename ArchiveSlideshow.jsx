@@ -2,7 +2,7 @@
 
 (function archiveSlideshowPanel(thisObj) {
     var SCRIPT_NAME = "Archive Slideshow";
-    var VERSION = "0.6.1";
+    var VERSION = "0.6.2";
     // Built-in ceiling on photo enlargement (percent of original size).
     // Formerly a panel field; 110 was the long-standing default. Slides that
     // exceed it still receive CHECK ENLARGEMENT labels.
@@ -128,8 +128,8 @@
 
         panel.orientation = "column";
         panel.alignChildren = ["fill", "top"];
-        panel.spacing = 6;
-        panel.margins = 8;
+        panel.spacing = 4;
+        panel.margins = 6;
 
         var tabs = panel.add("tabbedpanel");
         tabs.alignChildren = ["fill", "top"];
@@ -138,10 +138,9 @@
         var setupTab = tabs.add("tab", undefined, "Setup");
         setupTab.orientation = "column";
         setupTab.alignChildren = ["left", "top"];
-        setupTab.spacing = 6;
-        setupTab.margins = 10;
+        setupTab.spacing = 5;
+        setupTab.margins = 8;
 
-        addCategoryLabel(setupTab, "Photos");
         var sourceRow = setupTab.add("group");
         sourceRow.orientation = "row";
         sourceRow.alignChildren = ["left", "center"];
@@ -158,7 +157,6 @@
         sourceLabel.helpTip =
             "Folders become sections. Images are sorted naturally by filename.";
 
-        addCategoryLabel(setupTab, "Canvas");
         var canvasRow = setupTab.add("group");
         canvasRow.orientation = "row";
         canvasRow.alignChildren = ["left", "center"];
@@ -174,7 +172,6 @@
             "Frames per second, such as 24, 25, 29.97, or 30."
         );
 
-        addCategoryLabel(setupTab, "Timing");
         var timingRow = setupTab.add("group");
         timingRow.orientation = "row";
         timingRow.alignChildren = ["left", "center"];
@@ -208,8 +205,8 @@
         var styleTab = tabs.add("tab", undefined, "Style");
         styleTab.orientation = "column";
         styleTab.alignChildren = ["left", "top"];
-        styleTab.spacing = 6;
-        styleTab.margins = 10;
+        styleTab.spacing = 5;
+        styleTab.margins = 8;
 
         addCategoryLabel(styleTab, "Framing");
         var treatmentPool = addIconPool(styleTab, [
@@ -230,12 +227,14 @@
         var moveTransRow = styleTab.add("group");
         moveTransRow.orientation = "row";
         moveTransRow.alignChildren = ["left", "top"];
-        moveTransRow.spacing = 18;
+        moveTransRow.spacing = 14;
         var moveColumn = moveTransRow.add("group");
         moveColumn.orientation = "column";
         moveColumn.alignChildren = ["left", "top"];
         moveColumn.spacing = 4;
-        addCategoryLabel(moveColumn, "Movement");
+        var movementLabel = addCategoryLabel(moveColumn, "Movement");
+        movementLabel.helpTip =
+            "Deselect all movement tiles for still slides.";
         var motionPool = addIconPool(moveColumn, [
             { name: "Gentle Push", icon: "gentlePush", on: true,
               tip: "Gentle Push — slow settle-in zoom" },
@@ -257,10 +256,12 @@
             { name: "Push", icon: "pushTransition",
               tip: "Push — the next slide pushes this one off screen" }
         ]);
-        addNoteLabel(styleTab, "Uncheck all movement for still slides.");
-
-        addCategoryLabel(styleTab, "Color");
-        var lookPool = addIconRadio(styleTab, [
+        var colorColumn = moveTransRow.add("group");
+        colorColumn.orientation = "column";
+        colorColumn.alignChildren = ["left", "top"];
+        colorColumn.spacing = 4;
+        addCategoryLabel(colorColumn, "Color");
+        var lookPool = addIconRadio(colorColumn, [
             { name: "Off", icon: "colorOriginal", on: true,
               tip: "Original — photos keep their own color" },
             { name: "Monochrome", icon: "colorMono",
@@ -273,35 +274,48 @@
         var pairsTab = tabs.add("tab", undefined, "Pairs");
         pairsTab.orientation = "column";
         pairsTab.alignChildren = ["left", "top"];
-        pairsTab.spacing = 6;
-        pairsTab.margins = 10;
+        pairsTab.spacing = 5;
+        pairsTab.margins = 8;
 
-        addCategoryLabel(pairsTab, "When photos share a slide");
-        var multiRow = addDropdownRow(
-            pairsTab,
-            "How often",
-            [
-                "Never (all singles)",
-                "Occasionally",
-                "When low-res",
-                "Often",
-                "Always (all pairs)"
-            ],
-            1,
+        var pairRow = pairsTab.add("group");
+        pairRow.orientation = "row";
+        pairRow.alignChildren = ["left", "center"];
+        pairRow.spacing = 6;
+        var multiTip =
             "How often two photos share one slide. \"Never\" forces every " +
-                "slide single; \"Always\" pairs every slide, leaving only a " +
-                "final odd photo single."
-        );
-        var pairTimingRow = addDropdownRow(
-            pairsTab,
-            "Length",
-            ["Standard", "Doubled"],
-            0,
+            "slide single; \"Always\" pairs every slide, leaving only a " +
+            "final odd photo single.";
+        var multiLabel = pairRow.add("statictext", undefined, "How often");
+        multiLabel.helpTip = multiTip;
+        var multiInput = pairRow.add("dropdownlist", undefined, [
+            "Never (all singles)",
+            "Occasionally",
+            "When low-res",
+            "Often",
+            "Always (all pairs)"
+        ]);
+        multiInput.selection = 1;
+        multiInput.preferredSize.width = 134;
+        multiInput.helpTip = multiTip;
+        var pairTimingTip =
             "Doubled keeps paired slides on screen twice as long, so each " +
-                "photo gets its full time. Merge and Split honor this " +
-                "setting too."
+            "photo gets its full time. Merge and Split honor this setting " +
+            "too.";
+        var pairTimingLabel = pairRow.add("statictext", undefined, "Length");
+        pairTimingLabel.helpTip = pairTimingTip;
+        var pairTimingInput = pairRow.add(
+            "dropdownlist",
+            undefined,
+            ["Standard", "Doubled"]
         );
-        addCategoryLabel(pairsTab, "Pair style");
+        pairTimingInput.selection = 0;
+        pairTimingInput.preferredSize.width = 92;
+        pairTimingInput.helpTip = pairTimingTip;
+
+        var pairStyleLabel = addCategoryLabel(pairsTab, "Pair style");
+        pairStyleLabel.helpTip =
+            "Merge and Split reshape pairs after the build, so this only " +
+            "sets the starting mix.";
         var multiStylePool = addIconPool(pairsTab, [
             { name: "Hero + Support", icon: "heroSupport", on: true,
               tip: "Hero + Support — one large photo, one small" },
@@ -316,10 +330,6 @@
             { name: "Edge to Edge", icon: "edgeToEdge", on: true,
               tip: "Edge to Edge — split screen divided by a thin rule" }
         ]);
-        addNoteLabel(
-            pairsTab,
-            "Merge and Split reshape pairs after the build."
-        );
 
         tabs.selection = setupTab;
 
@@ -329,7 +339,7 @@
             "Build Editable Slideshow"
         );
         buildButton.alignment = ["fill", "top"];
-        buildButton.preferredSize.height = 32;
+        buildButton.preferredSize.height = 26;
         buildButton.helpTip =
             "Create the slideshow. Everything generated is ordinary, " +
             "editable After Effects material.";
@@ -340,12 +350,14 @@
         actionsRow.alignChildren = ["fill", "center"];
         actionsRow.alignment = ["fill", "top"];
         var cycleButton = actionsRow.add("button", undefined, "Cycle");
+        cycleButton.preferredSize.height = 24;
         cycleButton.helpTip =
             "Select a slide — open its comp, click its layer in the " +
             "master timeline, or select it in the Project panel — then " +
             "click to rebuild it with the next checked style. Click again " +
             "to keep cycling.";
         var mergeButton = actionsRow.add("button", undefined, "Merge »");
+        mergeButton.preferredSize.height = 24;
         mergeButton.helpTip =
             "Combine the selected single-photo slide with the next single " +
             "into one pair slide. Pair length sets the timing: Standard " +
@@ -356,19 +368,14 @@
             undefined,
             "« Split »"
         );
+        splitButton.preferredSize.height = 24;
         splitButton.helpTip =
             "Break the selected pair slide into two single slides. Pair " +
             "length sets the timing: Standard gives each photo a full slot " +
             "and moves later slides back; Doubled halves the slot.";
 
-        var status = panel.add(
-            "statictext",
-            undefined,
-            "Choose a folder of archive images to begin.",
-            { multiline: true }
-        );
+        var status = panel.add("statictext", undefined, "");
         status.alignment = ["fill", "top"];
-        status.preferredSize.height = 38;
 
         ui = {
             sourceLabel: sourceLabel,
@@ -383,8 +390,8 @@
             motions: motionPool,
             transitions: transitionPool,
             look: lookPool,
-            multi: multiRow.input,
-            pairTiming: pairTimingRow.input,
+            multi: multiInput,
+            pairTiming: pairTimingInput,
             multiStyles: multiStylePool,
             status: status
         };
@@ -429,23 +436,6 @@
         return { group: group, input: input };
     }
 
-    function addDropdownRow(parent, label, items, selectedIndex, helpTip) {
-        var row = parent.add("group");
-        row.orientation = "row";
-        row.alignChildren = ["left", "center"];
-        var labelControl = row.add("statictext", undefined, label);
-        labelControl.preferredSize.width = 104;
-        var input = row.add("dropdownlist", undefined, items);
-        input.selection = selectedIndex;
-        input.alignment = ["fill", "center"];
-        input.preferredSize.width = 150;
-        if (helpTip !== undefined) {
-            labelControl.helpTip = helpTip;
-            input.helpTip = helpTip;
-        }
-        return { row: row, input: input };
-    }
-
     // Small uppercase category heading, dimmed when the host allows it.
     function addCategoryLabel(parent, text) {
         var label = parent.add("statictext", undefined, text.toUpperCase());
@@ -464,25 +454,6 @@
             // Plain label is fine where graphics styling is unavailable.
         }
         return label;
-    }
-
-    function addNoteLabel(parent, text) {
-        var note = parent.add("statictext", undefined, text);
-        try {
-            note.graphics.foregroundColor = note.graphics.newPen(
-                note.graphics.PenType.SOLID_COLOR,
-                [0.5, 0.5, 0.5],
-                1
-            );
-            note.graphics.font = ScriptUI.newFont(
-                note.graphics.font.name,
-                ScriptUI.FontStyle.REGULAR,
-                10
-            );
-        } catch (styleError) {
-            // Plain note is fine where graphics styling is unavailable.
-        }
-        return note;
     }
 
     // A row of picture toggles: each item is {name, icon, on, tip}. Falls
