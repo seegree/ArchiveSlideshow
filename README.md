@@ -26,17 +26,30 @@ C:\Program Files\Adobe\Adobe After Effects 2026\Support Files\Scripts\ScriptUI P
 
 ## Workflow
 
-1. Choose a folder containing archive images.
-2. Set the canvas size and seconds per image.
-3. Check the image treatments, movements, pair styles, and transitions the
-   slideshow may use, and choose a pairing policy and color treatment.
+The panel is three tabs — **Setup**, **Style**, **Pairs** — with the Build
+button, the refine buttons, and the status line always visible below.
+
+1. **Setup**: choose the photo folder; set canvas size, frame rate, slide
+   and transition durations; toggle the designed background and per-folder
+   title cards.
+2. **Style**: pick the allowed framings, movements, and transitions from
+   rows of icon tiles — each tile is a small diagram of the layout it
+   builds, named in its tooltip — and choose a color treatment (Original,
+   Monochrome, or Faded).
+3. **Pairs**: set how often two photos share a slide, the pair length, and
+   the allowed pair styles (icon tiles again).
 4. Click **Build Editable Slideshow**.
 
-Style controls share one model: **checked styles form the allowed pool**.
-Check one style to force it on every slide; check several to let the
-automatic mix choose among them; check everything for the full mix. A
+Style tiles share one model: **selected tiles form the allowed pool**.
+Select one to force it on every slide; select several to let the automatic
+mix choose among them; select everything for the full mix. Movement is the
+one exception: deselecting every movement tile means still slides. A
 narrow brief — say, cuts only, gentle push only — is just a matter of
-unchecking everything else.
+deselecting everything else.
+
+Photos are never enlarged past about 110% of their original size by the
+automatic treatments; slides that exceed it (forced framings, small photos
+in two-up windows) are labeled `CHECK ENLARGEMENT` for review.
 
 The panel scans subfolders recursively. Folder and file names are sorted
 naturally, so names such as `01 Intro`, `02 Family`, and `photo-10.jpg` retain
@@ -85,9 +98,10 @@ master composition, so the transparent inset layouts sit on a designed ground
 rather than pure black. The generated `MASTER BACKGROUND` and `MASTER
 VIGNETTE` layers can be recolored, replaced with your own artwork, or deleted.
 
-The **Max enlargement** setting controls how far foreground archive images may be
-enlarged in automatic and protected treatments. Explicit Full Bleed and Near
-Full choices prioritize the selected composition over that automatic limit.
+A built-in enlargement ceiling (about 110% of original size) controls how far
+foreground archive images may be enlarged in automatic and protected
+treatments. Explicit Full Bleed and Near Full choices prioritize the selected
+composition over that automatic limit.
 
 Pairing can be set to Never (all singles), Occasionally, When low-res, Often,
 or Always (all pairs). "Never" forces every slide to a single photo, and
@@ -165,7 +179,7 @@ Each slide comp records the move it was built with in two places:
 ## Cycling a slide's layout
 
 To re-roll a single slide without rebuilding the whole slideshow, target it in
-any of three ways, then click **Cycle Active Slide's Layout**:
+any of three ways, then click **Cycle**:
 
 - open the slide comp, or
 - click the slide's layer in the master timeline, or
@@ -180,7 +194,7 @@ the master timeline keeps the master in view and renames its layer to match, so
 you can keep working in context.
 
 Cycling keeps the slide's size, duration, and the movement it was built with,
-and reads the current panel's color treatment and max enlargement. It rebuilds
+and reads the current panel's color treatment. It rebuilds
 the slide from its recorded source photos, so any manual tweaks to that slide
 are replaced. Old photo-window precomps from the previous layout are removed
 as part of the re-roll.
@@ -190,11 +204,11 @@ as part of the re-roll.
 Two more post-operations reshape pairing after generation, using the same
 slide targeting as Cycle:
 
-- **Merge with Next** combines the selected single-photo slide with the next
-  single into one pair slide, choosing a layout from the checked pair
+- **Merge »** combines the selected single-photo slide with the next
+  single into one pair slide, choosing a layout from the selected pair
   styles. It refuses to cross a section card.
-- **Split Pair** breaks the selected pair into two single slides, one per
-  photo, joined by the panel's first checked transition. Both halves keep
+- **« Split »** breaks the selected pair into two single slides, one per
+  photo, joined by the panel's first selected transition. Both halves keep
   the movement the pair was built with.
 
 The **Pair length** dropdown sets the timing at click time. With
