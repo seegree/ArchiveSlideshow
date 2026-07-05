@@ -2,7 +2,7 @@
 
 (function archiveSlideshowPanel(thisObj) {
     var SCRIPT_NAME = "Archive Slideshow";
-    var VERSION = "0.6.2";
+    var VERSION = "0.6.3";
     // Built-in ceiling on photo enlargement (percent of original size).
     // Formerly a panel field; 110 was the long-standing default. Slides that
     // exceed it still receive CHECK ENLARGEMENT labels.
@@ -138,8 +138,8 @@
         var setupTab = tabs.add("tab", undefined, "Setup");
         setupTab.orientation = "column";
         setupTab.alignChildren = ["left", "top"];
-        setupTab.spacing = 5;
-        setupTab.margins = 8;
+        setupTab.spacing = 4;
+        setupTab.margins = 6;
 
         var sourceRow = setupTab.add("group");
         sourceRow.orientation = "row";
@@ -171,6 +171,17 @@
             canvasRow, "FPS", 30, 4, undefined,
             "Frames per second, such as 24, 25, 29.97, or 30."
         );
+        var backgroundCheck = canvasRow.add("checkbox", undefined, "Background");
+        backgroundCheck.value = true;
+        backgroundCheck.helpTip =
+            "Add a designed dark background with a soft vignette under every " +
+            "slide so inset layouts sit on a ground instead of black. " +
+            "Recolor or replace the MASTER BACKGROUND layer afterward.";
+        var titleCardsCheck = canvasRow.add("checkbox", undefined, "Title cards");
+        titleCardsCheck.value = true;
+        titleCardsCheck.helpTip =
+            "Insert a title slide at the start of each folder, named after " +
+            "the folder.";
 
         var timingRow = setupTab.add("group");
         timingRow.orientation = "row";
@@ -185,28 +196,12 @@
             "Length of each dissolve or push, in seconds."
         );
 
-        var checksRow = setupTab.add("group");
-        checksRow.orientation = "row";
-        checksRow.alignChildren = ["left", "center"];
-        checksRow.spacing = 14;
-        var backgroundCheck = checksRow.add("checkbox", undefined, "Background");
-        backgroundCheck.value = true;
-        backgroundCheck.helpTip =
-            "Add a designed dark background with a soft vignette under every " +
-            "slide so inset layouts sit on a ground instead of black. " +
-            "Recolor or replace the MASTER BACKGROUND layer afterward.";
-        var titleCardsCheck = checksRow.add("checkbox", undefined, "Title cards");
-        titleCardsCheck.value = true;
-        titleCardsCheck.helpTip =
-            "Insert a title slide at the start of each folder, named after " +
-            "the folder.";
-
         // ---- Style ----
         var styleTab = tabs.add("tab", undefined, "Style");
         styleTab.orientation = "column";
         styleTab.alignChildren = ["left", "top"];
-        styleTab.spacing = 5;
-        styleTab.margins = 8;
+        styleTab.spacing = 4;
+        styleTab.margins = 6;
 
         addCategoryLabel(styleTab, "Framing");
         var treatmentPool = addIconPool(styleTab, [
@@ -274,8 +269,8 @@
         var pairsTab = tabs.add("tab", undefined, "Pairs");
         pairsTab.orientation = "column";
         pairsTab.alignChildren = ["left", "top"];
-        pairsTab.spacing = 5;
-        pairsTab.margins = 8;
+        pairsTab.spacing = 4;
+        pairsTab.margins = 6;
 
         var pairRow = pairsTab.add("group");
         pairRow.orientation = "row";
