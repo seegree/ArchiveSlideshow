@@ -74,7 +74,13 @@ post-ops (delete slide, reorder, duration tweaks) will want it.
 
 Includes the `kind` → count refactor from the architecture note.
 
-## Step 3 — Max photos per slide (N-up layouts)
+## Step 3 — Max photos per slide (N-up layouts) — DEFERRED (2026-07-04)
+
+Deferred by choice: for standard screens the 1/2-photo functionality is
+where it should be, and N-up risks overcomplicating the codebase for a
+rarely used feature. If it returns, it likely returns as a separate,
+special-purpose variant of the plugin for unusual canvases (e.g. ultrawide
+7000×1080 screens) and/or more photos per slide, forked from a stable core.
 
 A number field (1–4) replacing the implicit ceiling of 2:
 
