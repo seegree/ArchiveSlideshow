@@ -2,7 +2,7 @@
 
 (function archiveSlideshowPanel(thisObj) {
     var SCRIPT_NAME = "Archive Slideshow";
-    var VERSION = "0.6.3";
+    var VERSION = "0.6.4";
     // Built-in ceiling on photo enlargement (percent of original size).
     // Formerly a panel field; 110 was the long-standing default. Slides that
     // exceed it still receive CHECK ENLARGEMENT labels.
@@ -171,13 +171,13 @@
             canvasRow, "FPS", 30, 4, undefined,
             "Frames per second, such as 24, 25, 29.97, or 30."
         );
-        var backgroundCheck = canvasRow.add("checkbox", undefined, "Background");
+        var backgroundCheck = canvasRow.add("checkbox", undefined, "BG");
         backgroundCheck.value = true;
         backgroundCheck.helpTip =
             "Add a designed dark background with a soft vignette under every " +
             "slide so inset layouts sit on a ground instead of black. " +
             "Recolor or replace the MASTER BACKGROUND layer afterward.";
-        var titleCardsCheck = canvasRow.add("checkbox", undefined, "Title cards");
+        var titleCardsCheck = canvasRow.add("checkbox", undefined, "Titles");
         titleCardsCheck.value = true;
         titleCardsCheck.helpTip =
             "Insert a title slide at the start of each folder, named after " +
