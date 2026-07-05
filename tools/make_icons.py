@@ -13,8 +13,10 @@ import sys
 import zlib
 
 SS = 4          # supersample factor
-TILE_W, TILE_H = 40, 30
-GX, GY = 7.0, 5.0   # glyph box (26x20) offset inside the tile
+TILE_W, TILE_H = 32, 24
+GS = 0.8        # glyph scale: glyph coords are authored in a 26x20 box
+GX = (TILE_W - 26 * GS) / 2.0
+GY = (TILE_H - 20 * GS) / 2.0
 
 OUTER = (0x1D, 0x1D, 0x1D)
 SEAM = (0xE8, 0xE4, 0xD8)
@@ -40,7 +42,7 @@ class Canvas:
 
     def base_tile(self, bg, border):
         """Rounded-rect tile via signed distance: outer, 1px border, fill."""
-        r = 4.0
+        r = 3.0
         half_w, half_h = TILE_W / 2.0, TILE_H / 2.0
         inset = 0.5  # border centerline sits half a pixel in
         for y in range(self.h):
@@ -62,7 +64,7 @@ class Canvas:
 
     def poly(self, pts, color, alpha=1.0):
         """Fill polygon; pts in glyph coordinates (26x20 box)."""
-        p = [((GX + x) * SS, (GY + y) * SS) for x, y in pts]
+        p = [((GX + x * GS) * SS, (GY + y * GS) * SS) for x, y in pts]
         ys = [q[1] for q in p]
         y0 = max(0, int(min(ys)))
         y1 = min(self.h - 1, int(max(ys)) + 1)
